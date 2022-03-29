@@ -7,7 +7,8 @@ import numpy as np
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
 from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments, RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer
 from load_data import *
-
+import wandb
+import argparse
 
 
 
@@ -131,7 +132,8 @@ def train():
                                   # `steps`: Evaluate every `eval_steps`.
                                   # `epoch`: Evaluate every end of epoch.
       eval_steps = 500,            # evaluation step.
-      load_best_model_at_end = True 
+      load_best_model_at_end = True,
+      report_to='wandb' 
     )
     trainer = Trainer(
       model=model,                         # the instantiated 🤗 Transformers model to be trained
@@ -147,6 +149,55 @@ def train():
 
 
 def main():
+    parser = argparse.ArgumentParser()
+
+    """path, model option"""
+    parser.add_argument('--seed', type=int, default=42,
+                        help='random seed (default: 42)')
+    parser.add_argument('--save_dir', type=str, default = './best_model', 
+                        help='model save dir path (default : ./best_model)')
+    parser.add_argument('--wandb_path', type= str, default= 'test-project',
+                        help='wandb graph, save_dir basic path (default: test-project') 
+    parser.add_argument('--train_path', type= str, default= '/opt/ml/dataset/train/train.csv',
+                        help='train csv path (default: /opt/ml/dataset/train/train.csv')
+    parser.add_argument('--tokenize_option', type=str, default='PUN',
+                        help='token option ex) SUB, PUN')    
+    parser.add_argument('--fold', type=int, default=5,
+                        help='fold (default: 5)')
+    parser.add_argument('--model', type=str, default='klue/roberta-large',
+                        help='model type (default: klue/roberta-large)')
+    parser.add_argument('--loss', type=str, default= 'LB',
+                        help='LB: LabelSmoothing, CE: CrossEntropy')
+    parser.add_argument('--wandb_name', type=str, default= 'test',
+                        help='wandb name (default: test)')
+
+
+    """hyperparameter"""
+    parser.add_argument('--epochs', type=int, default=5,
+                        help='number of epochs to train (default: 5)')
+    parser.add_argument('--lr', type=float, default=1e-5,
+                        help='learning rate (default: 1e-5)')
+    parser.add_argument('--batch', type=int, default=32,
+                        help='input batch size for training (default: 32)')
+    parser.add_argument('--gradient_accum', type=int, default=2,
+                        help='gradient accumulation (default: 2)')
+    parser.add_argument('--batch_valid', type=int, default=32,
+                        help='input batch size for validing (default: 32)')
+    parser.add_argument('--warmup', type=int, default=0.1,
+                        help='warmup_ratio (default: 0.1)')
+    parser.add_argument('--eval_steps', type=int, default=250,
+                        help='eval_steps (default: 250)')
+    parser.add_argument('--save_steps', type=int, default=250,
+                        help='save_steps (default: 250)')
+    parser.add_argument('--logging_steps', type=int,
+                        default=50, help='logging_steps (default: 50)')
+    parser.add_argument('--weight_decay', type=float,
+                        default=0.01, help='weight_decay (default: 0.01)')
+    parser.add_argument('--metric_for_best_model', type=str, default='micro f1 score',
+                        help='metric_for_best_model (default: micro f1 score')
+    
+    args= parser.parse_args()
+    wandb.init(project="test-project", entity="boostcamp_nlp_04", config = vars(args),)
     train()
 
 
