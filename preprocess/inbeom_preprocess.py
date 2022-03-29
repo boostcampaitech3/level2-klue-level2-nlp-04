@@ -57,6 +57,9 @@ def clean_punc(df: pd.DataFrame) -> pd.DataFrame:
 def preprocessing_dataset_v2(dataset: pd.DataFrame) -> pd.DataFrame:
     """ 
     처음 불러온 csv 파일을 원하는 형태의 DataFrame으로 변경 시켜줍니다.
+    
+    subject_entity (변겅 전) -> subject_entity, subject_type, subject_idx (변경 후)
+    {'word': '비틀즈', 'start_idx': 24, 'end_idx': 26, 'type': 'ORG'} (변경 전) -> "비틀즈", "(24, 26)", "ORG" (변경 후)
     """
     subject_entity = []
     subject_type = []
@@ -90,4 +93,4 @@ def preprocessing_dataset_v2(dataset: pd.DataFrame) -> pd.DataFrame:
                                 'object_entity':object_entity, 'object_type':object_type, 'object_idx':object_idx,
                                 'label':dataset['label'],})
   
-    return out_dataset 
+    return out_dataset
