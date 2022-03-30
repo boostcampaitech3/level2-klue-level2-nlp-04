@@ -10,7 +10,7 @@ python train.py \
 --model klue/roberta-large \
 --loss LB \
 --wandb_name test-project \
---epochs 20 \
+--epochs 1 \
 --lr 5e-5 \
 --batch 16 \
 --gradient_accum 2 \
@@ -19,5 +19,4 @@ python train.py \
 --eval_steps 500 \
 --save_steps 500 \
 --logging_steps 100 \
---weight_decay 0.01 \
---metric_for_best_model micro f1 score
+--weight_decay 0.01 
