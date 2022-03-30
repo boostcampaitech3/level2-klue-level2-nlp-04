@@ -168,8 +168,8 @@ def main():
                         help='model type (default: klue/roberta-large)')
     parser.add_argument('--loss', type=str, default= 'LB',
                         help='LB: LabelSmoothing, CE: CrossEntropy')
-    parser.add_argument('--wandb_name', type=str, default= 'test',
-                        help='wandb name (default: test)')
+    parser.add_argument('--wandb_name', type=str, default= 'test-project',
+                        help='wandb name (default: test-project)')
 
 
     """hyperparameter"""
@@ -197,7 +197,7 @@ def main():
                         help='metric_for_best_model (default: micro f1 score')
     
     args= parser.parse_args()
-    wandb.init(project="test-project", entity="boostcamp_nlp_04", config = vars(args),)
+    wandb.init(project=args.wandb_name, entity="boostcamp_nlp_04", config = vars(args),)
     train(args)
 
 
