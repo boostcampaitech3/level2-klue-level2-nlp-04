@@ -5,7 +5,7 @@ import torch
 import sklearn
 import numpy as np
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
-from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments, RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer
+from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments, RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer, EarlyStoppingCallback
 from load_data import *
 import wandb
 import argparse
@@ -64,7 +64,7 @@ def compute_metrics(pred):
     acc = accuracy_score(labels, preds) # 리더보드 평가에는 포함되지 않습니다.
 
     return {
-        'micro f1 score': f1,
+        'f1': f1,
         'auprc' : auprc,
         'accuracy': acc,
     }
@@ -133,6 +133,7 @@ def train(args):
                                   # `epoch`: Evaluate every end of epoch.
       eval_steps = args.eval_steps,            # evaluation step.
       load_best_model_at_end = True,
+      metric_for_best_model = args.metric_for_best_model,
       report_to='wandb' 
     )
     trainer = Trainer(
@@ -140,7 +141,8 @@ def train(args):
       args=training_args,                  # training arguments, defined above
       train_dataset=RE_train_dataset,         # training dataset
       eval_dataset=RE_train_dataset,             # evaluation dataset
-      compute_metrics=compute_metrics         # define metrics function
+      compute_metrics=compute_metrics,         # define metrics function
+      callbacks = [EarlyStoppingCallback(early_stopping_patience=3)]
     )
 
     # train model
@@ -168,8 +170,8 @@ def main():
                         help='model type (default: klue/roberta-large)')
     parser.add_argument('--loss', type=str, default= 'LB',
                         help='LB: LabelSmoothing, CE: CrossEntropy')
-    parser.add_argument('--wandb_name', type=str, default= 'test-project',
-                        help='wandb name (default: test-project)')
+    parser.add_argument('--wandb_name', type=str, default= 'test',
+                        help='wandb name (default: test)')
 
 
     """hyperparameter"""
@@ -197,8 +199,8 @@ def main():
                         help='metric_for_best_model (default: micro f1 score')
     
     args= parser.parse_args()
-    wandb.init(name=args.wandb_name, project=args.wandb_path, entity="boostcamp_nlp_04", config = vars(args),)
 
+    wandb.init(name=args.wandb_name, project=args.wandb_path, entity="boostcamp_nlp_04", config = vars(args),)
     train(args)
 
 
