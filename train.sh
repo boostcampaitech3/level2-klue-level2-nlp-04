@@ -2,14 +2,14 @@
 
 python train.py \
 --seed 42 \
---save_dir /opt/ml/code/result \
---wandb_path /opt/ml/code/test-project \
+--save_dir /opt/ml/code/results \
+--wandb_path test-project \
+--wandb_name test-project \
 --train_path /opt/ml/dataset/train/train.csv \
 --tokenize_option PUN \
 --fold 5 \
 --model klue/roberta-large \
 --loss LB \
---wandb_name test-project \
 --epochs 1 \
 --lr 5e-5 \
 --batch 16 \

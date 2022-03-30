@@ -199,7 +199,8 @@ def main():
                         help='metric_for_best_model (default: micro f1 score')
     
     args= parser.parse_args()
-    wandb.init(project="test-project", entity="boostcamp_nlp_04", name = args.wandb_name, config = vars(args),)
+
+    wandb.init(name=args.wandb_name, project=args.wandb_path, entity="boostcamp_nlp_04", config = vars(args),)
     train(args)
 
 
