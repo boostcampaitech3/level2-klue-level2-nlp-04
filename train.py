@@ -183,7 +183,7 @@ def main():
                         help='gradient accumulation (default: 2)')
     parser.add_argument('--batch_valid', type=int, default=16,
                         help='input batch size for validing (default: 16)')
-    parser.add_argument('--warmup', type=int, default=0.1,
+    parser.add_argument('--warmup', type=float, default=0.1,
                         help='warmup_ratio (default: 0.1)')
     parser.add_argument('--eval_steps', type=int, default=500,
                         help='eval_steps (default: 500)')
