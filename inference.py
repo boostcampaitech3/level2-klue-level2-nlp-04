@@ -26,13 +26,13 @@ def inference(model, tokenized_sent, device):
                 attention_mask=data['attention_mask'].to(device),
                 token_type_ids=data['token_type_ids'].to(device)
               )
-    logits = outputs[0]
-    prob = F.softmax(logits, dim=-1).detach().cpu().numpy()
-    logits = logits.detach().cpu().numpy()
-    result = np.argmax(logits, axis=-1)
+        logits = outputs[0]
+        prob = F.softmax(logits, dim=-1).detach().cpu().numpy()
+        logits = logits.detach().cpu().numpy()
+        result = np.argmax(logits, axis=-1)
 
-    output_pred.append(result)
-    output_prob.append(prob)
+        output_pred.append(result)
+        output_prob.append(prob)
 
     return np.concatenate(output_pred).tolist(), np.concatenate(output_prob, axis=0).tolist()
 
