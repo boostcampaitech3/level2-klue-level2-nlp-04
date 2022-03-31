@@ -54,7 +54,7 @@ def load_test_dataset(dataset_dir:str, tokenizer)->Tuple[List[int], Dict, List[i
 
     return test_dataset['id'], tokenized_test, test_label
 
-def tokenized_dataset(dataset:pd.DataFrame, tokenizer)->Dict[str:List[int], str:List[int], str:List[int]]:
+def tokenized_dataset(dataset:pd.DataFrame, tokenizer)->Dict:
     """ tokenizer에 따라 sentence를 tokenizing 합니다."""
     concat_entity = []
     for e01, e02 in zip(dataset['subject_entity'], dataset['object_entity']):
