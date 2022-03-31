@@ -5,6 +5,7 @@ import torch
 import sklearn
 import numpy as np
 from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
+from sklearn.model_selection import train_test_split
 from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments, RobertaConfig, RobertaTokenizer, RobertaForSequenceClassification, BertTokenizer, EarlyStoppingCallback
 from load_data import *
 import wandb
@@ -99,6 +100,8 @@ def train(args):
 
     # make dataset for pytorch.
     RE_train_dataset = RE_Dataset(tokenized_train, train_label)
+    X_train, X_val = train_test_split(RE_train_dataset, test_size=0.2, random_state=42)
+
     # RE_dev_dataset = RE_Dataset(tokenized_dev, dev_label)
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -139,8 +142,8 @@ def train(args):
     trainer = Trainer(
       model=model,                         # the instantiated 🤗 Transformers model to be trained
       args=training_args,                  # training arguments, defined above
-      train_dataset=RE_train_dataset,         # training dataset
-      eval_dataset=RE_train_dataset,             # evaluation dataset
+      train_dataset=X_train,         # training dataset
+      eval_dataset=X_val,             # evaluation dataset
       compute_metrics=compute_metrics,         # define metrics function
       callbacks = [EarlyStoppingCallback(early_stopping_patience=3)]
     )
@@ -195,8 +198,8 @@ def main():
                         default=100, help='logging_steps (default: 100)')
     parser.add_argument('--weight_decay', type=float,
                         default=0.01, help='weight_decay (default: 0.01)')
-    parser.add_argument('--metric_for_best_model', type=str, default='micro f1 score',
-                        help='metric_for_best_model (default: micro f1 score')
+    parser.add_argument('--metric_for_best_model', type=str, default='f1',
+                        help='metric_for_best_model (default: f1')
     
     args= parser.parse_args()
 
