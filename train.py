@@ -4,7 +4,15 @@ import torch
 import sklearn
 import numpy as np
 from sklearn.model_selection import train_test_split
-from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments, EarlyStoppingCallback
+from transformers import (
+  AutoTokenizer,
+  AutoConfig,
+  AutoModelForSequenceClassification,
+  Trainer,
+  TrainingArguments,
+  EarlyStoppingCallback
+  )
+from transformers.utils import logging
 from load_data import *
 import wandb
 import argparse
@@ -32,17 +40,16 @@ def train(args):
     X_train, X_val = train_test_split(RE_train_dataset, test_size=0.2, random_state=42)
 
     # RE_dev_dataset = RE_Dataset(tokenized_dev, dev_label)
-
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    print(device)
+    print("Training Start")
+    print("="*100)
+    print(f"DEVICE : {device}")
     # setting model hyperparameter
     model_config =  AutoConfig.from_pretrained(MODEL_NAME)
     model_config.num_labels = 30
 
-    model =  AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
-    print(model.config)
-    model.parameters
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
     model.to(device)
 
     # 사용한 option 외에도 다양한 option들이 있습니다.
@@ -130,10 +137,13 @@ def main():
                         help='metric_for_best_model (default: f1')
     
     args= parser.parse_args()
-
     wandb.init(name=args.wandb_name, project=args.wandb_path, entity="boostcamp_nlp_04", config = vars(args),)
-    train(args)
 
+    logging.set_verbosity_warning()
+    logger = logging.get_logger()
+    logger.warning("\n")
+    
+    train(args)
 
 if __name__ == '__main__':
     main()
