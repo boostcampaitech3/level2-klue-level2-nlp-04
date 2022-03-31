@@ -4,11 +4,11 @@ from load_data import *
 import pandas as pd
 import torch
 import torch.nn.functional as F
-
 import pickle as pickle
 import numpy as np
 import argparse
 from tqdm import tqdm
+from utilities.main_utilities import *
 
 def inference(model, tokenized_sent, device):
     """
@@ -36,42 +36,18 @@ def inference(model, tokenized_sent, device):
 
     return np.concatenate(output_pred).tolist(), np.concatenate(output_prob, axis=0).tolist()
 
-def num_to_label(label):
-    """
-      숫자로 되어 있던 class를 원본 문자열 라벨로 변환 합니다.
-    """
-    origin_label = []
-    with open('dict_num_to_label.pkl', 'rb') as f:
-        dict_num_to_label = pickle.load(f)
-    for v in label:
-        origin_label.append(dict_num_to_label[v])
-    
-    return origin_label
-
-def load_test_dataset(dataset_dir, tokenizer):
-    """
-      test dataset을 불러온 후,
-      tokenizing 합니다.
-    """
-    test_dataset = load_data(dataset_dir)
-    test_label = list(map(int,test_dataset['label'].values))
-    # tokenizing dataset
-    tokenized_test = tokenized_dataset(test_dataset, tokenizer)
-
-    return test_dataset['id'], tokenized_test, test_label
-
 def main(args):
     """
       주어진 dataset csv 파일과 같은 형태일 경우 inference 가능한 코드입니다.
     """
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     # load tokenizer
-    Tokenizer_NAME = "klue/bert-base"
+    Tokenizer_NAME = "klue/roberta-large"
     tokenizer = AutoTokenizer.from_pretrained(Tokenizer_NAME)
 
     ## load my model
     MODEL_NAME = args.model_dir # model dir.
-    model = AutoModelForSequenceClassification.from_pretrained(args.model_dir)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
     model.parameters
     model.to(device)
 

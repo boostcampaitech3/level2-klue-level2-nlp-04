@@ -1,7 +1,8 @@
 import sklearn
 import numpy as np
-from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score
-
+from sklearn.metrics import accuracy_score
+import pickle as pickle
+from typing import Callable, Dict, List
 # from criterion import *
 # from metric import *
 # from optimizer import *
@@ -38,7 +39,7 @@ def klue_re_auprc(probs, labels):
         score[c] = sklearn.metrics.auc(recall, precision)
     return np.average(score) * 100.0
 
-def compute_metrics(pred):
+def compute_metrics(pred:Callable[[], Dict]):
   """ validation을 위한 metrics function """
   labels = pred.label_ids
   preds = pred.predictions.argmax(-1)
@@ -54,3 +55,24 @@ def compute_metrics(pred):
       'auprc' : auprc,
       'accuracy': acc,
   }
+
+def label_to_num(label:List[str])->List[int]:
+    num_label = []
+    with open('../dict_label_to_num.pkl', 'rb') as f:
+        dict_label_to_num = pickle.load(f)
+    for v in label:
+        num_label.append(dict_label_to_num[v])
+    
+    return num_label
+
+def num_to_label(label:List[int])->List[str]:
+    """
+      숫자로 되어 있던 class를 원본 문자열 라벨로 변환 합니다.
+    """
+    origin_label = []
+    with open('../dict_num_to_label.pkl', 'rb') as f:
+        dict_num_to_label = pickle.load(f)
+    for v in label:
+        origin_label.append(dict_num_to_label[v])
+    
+    return origin_label

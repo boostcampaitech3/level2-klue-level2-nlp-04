@@ -2,11 +2,12 @@ import pickle as pickle
 import os
 import pandas as pd
 import torch
+from typing import List, Dict, Tuple
 
 
 class RE_Dataset(torch.utils.data.Dataset):
     """ Dataset 구성을 위한 class."""
-    def __init__(self, pair_dataset, labels):
+    def __init__(self, pair_dataset:Dict, labels:List[int]):
         self.pair_dataset = pair_dataset
         self.labels = labels
 
@@ -19,7 +20,7 @@ class RE_Dataset(torch.utils.data.Dataset):
         return len(self.labels) 
 
 
-def preprocessing_dataset(dataset):
+def preprocessing_dataset(dataset:pd.DataFrame)->pd.DataFrame:
     """ 처음 불러온 csv 파일을 원하는 형태의 DataFrame으로 변경 시켜줍니다."""
     subject_entity = []
     object_entity = []
@@ -34,15 +35,26 @@ def preprocessing_dataset(dataset):
     return out_dataset
 
 
-def load_data(dataset_dir):
+def load_data(dataset_dir:str)->pd.DataFrame:
     """ csv 파일을 경로에 맡게 불러 옵니다. """
     pd_dataset = pd.read_csv(dataset_dir)
     dataset = preprocessing_dataset(pd_dataset)
     
     return dataset
 
+def load_test_dataset(dataset_dir:str, tokenizer)->Tuple[List[int], Dict, List[int]]:
+    """
+      test dataset을 불러온 후,
+      tokenizing 합니다.
+    """
+    test_dataset = load_data(dataset_dir)
+    test_label = list(map(int,test_dataset['label'].values))
+    # tokenizing dataset
+    tokenized_test = tokenized_dataset(test_dataset, tokenizer)
 
-def tokenized_dataset(dataset, tokenizer):
+    return test_dataset['id'], tokenized_test, test_label
+
+def tokenized_dataset(dataset:pd.DataFrame, tokenizer)->Dict:
     """ tokenizer에 따라 sentence를 tokenizing 합니다."""
     concat_entity = []
     for e01, e02 in zip(dataset['subject_entity'], dataset['object_entity']):
