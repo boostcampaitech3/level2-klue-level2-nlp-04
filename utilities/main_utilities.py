@@ -51,7 +51,7 @@ def compute_metrics(pred:Callable[[], Dict]):
   acc = accuracy_score(labels, preds) # 리더보드 평가에는 포함되지 않습니다.
 
   return {
-      'micro f1 score': f1,
+      'f1': f1,
       'auprc' : auprc,
       'accuracy': acc,
   }
