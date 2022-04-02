@@ -1,3 +1,4 @@
+import os
 from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments
 from torch.utils.data import DataLoader
 from load_data import *
@@ -46,7 +47,7 @@ def main(args):
     tokenizer = AutoTokenizer.from_pretrained(Tokenizer_NAME)
 
     ## load my model
-    MODEL_NAME = args.model_dir # model dir.
+    MODEL_NAME = os.path.join(args.model_dir,args.model_name) # model dir.
     model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
     model.parameters
     model.to(device)
@@ -75,6 +76,7 @@ if __name__ == '__main__':
     
     # model dir
     parser.add_argument('--model_dir', type=str, default="./best_model")
+    parser.add_argument('--model_name', type=str, default=".")
     args = parser.parse_args()
     print(args)
     main(args)
