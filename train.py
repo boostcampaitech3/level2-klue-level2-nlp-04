@@ -86,7 +86,8 @@ def train(args):
 
     # train model
     trainer.train()
-    model.save_pretrained('./best_model')
+    path = os.path.join("./best_model", args.wandb_name)
+    model.save_pretrained(path)
 
 
 def main():
