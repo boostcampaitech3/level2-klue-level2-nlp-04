@@ -17,7 +17,30 @@ from load_data import *
 import wandb
 import argparse
 from utilities.main_utilities import *
+from utilities.criterion.loss import *
 
+class CustomTrainer(Trainer):
+    def __init__(self, loss_name, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.loss_name= loss_name
+    def compute_loss(self, model, inputs, return_outputs=False):
+        labels = inputs.get("labels")
+        # forward pass
+        outputs = model(**inputs)
+        logits = outputs.get("logits")
+        # compute custom loss (suppose one has 3 labels with different weights)
+        if self.loss_name == 'CE':
+          loss_fct = nn.CrossEntropyLoss
+        elif self.loss_name == 'LB':
+          loss_fct = LabelSmoothingLoss()
+        elif self.loss_name == 'focal':
+          loss_fct = FocalLoss()
+        elif self.loss_name == 'f1':
+          loss_fct = F1Loss()
+          
+        loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
+        return (loss, outputs) if return_outputs else loss
+        
 def train(args):
     # load model and tokenizer
     # MODEL_NAME = "bert-base-uncased"
@@ -52,6 +75,8 @@ def train(args):
     model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
     model.to(device)
 
+
+
     # 사용한 option 외에도 다양한 option들이 있습니다.
     # https://huggingface.co/transformers/main_classes/trainer.html#trainingarguments 참고해주세요.
     training_args = TrainingArguments(
@@ -75,13 +100,15 @@ def train(args):
       metric_for_best_model = args.metric_for_best_model,
       report_to='wandb' 
     )
-    trainer = Trainer(
+
+    trainer = CustomTrainer(
       model=model,                         # the instantiated 🤗 Transformers model to be trained
       args=training_args,                  # training arguments, defined above
       train_dataset=X_train,         # training dataset
       eval_dataset=X_val,             # evaluation dataset
       compute_metrics=compute_metrics,         # define metrics function
-      callbacks = [EarlyStoppingCallback(early_stopping_patience=3)]
+      callbacks = [EarlyStoppingCallback(early_stopping_patience=3)],
+      loss_name = args.loss
     )
 
     # train model
@@ -109,7 +136,7 @@ def main():
     parser.add_argument('--model', type=str, default='klue/roberta-large',
                         help='model type (default: klue/roberta-large)')
     parser.add_argument('--loss', type=str, default= 'LB',
-                        help='LB: LabelSmoothing, CE: CrossEntropy')
+                        help='LB: LabelSmoothing, CE: CrossEntropy, focal: Focal, f1:F1loss')
     parser.add_argument('--wandb_name', type=str, default= 'test',
                         help='wandb name (default: test)')
 
