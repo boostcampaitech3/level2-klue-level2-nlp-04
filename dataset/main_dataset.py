@@ -1,18 +1,10 @@
-import sys
-import pickle
-sys.path.append('..')
 import pandas as pd
 import torch
-from preprocess.main_preprocess import *
-
-# from dataset import *
-
+from typing import List, Dict, Tuple
 
 class RE_Dataset(torch.utils.data.Dataset):
-    """ 
-    Dataset 구성을 위한 class.
-    """
-    def __init__(self, pair_dataset, labels):
+    """ Dataset 구성을 위한 class. """
+    def __init__(self, pair_dataset:Dict, labels:List[int]):
         self.pair_dataset = pair_dataset
         self.labels = labels
 
@@ -22,53 +14,83 @@ class RE_Dataset(torch.utils.data.Dataset):
         return item
 
     def __len__(self):
-        return len(self.labels)
+        return len(self.labels) 
 
-
-def load_data(dataset_dir):
-    """ 
-    csv 파일을 경로에 맡게 불러 옵니다.
-     """
-    pd_dataset = pd.read_csv(dataset_dir)
-    dataset = preprocessing_dataset(pd_dataset)
-  
-    return dataset
-
-
-def load_test_dataset(dataset_dir, tokenizer):
+def tokenized_dataset(df: pd.DataFrame, tokenizer) -> Dict:
     """
-    test dataset을 불러온 후,
-    tokenizing 합니다.
+    Add Query로 데이터에 추가하여 tokenizer에 따라 sentence를 tokenizing 합니다.
+    이 때 subject_entity와 object_entity 순서를 고려하여 Query(question)을 생성합니다. 
+
+    추가 : @*[SUBT]PER[/SUBT]*[SUB]이순신[/SUB]@과 #^[OBJT]POH[/OBJT]^[OBJ]무신[/OBJ]#의 관계를 나타내는 문장  
     """
-    test_dataset = load_data(dataset_dir)
-    test_label = list(map(int,test_dataset['label'].values))
-    # tokenizing dataset
-    tokenized_test = tokenized_dataset(test_dataset, tokenizer)
+    new_question = []
+    for idx in range(len(df)):
+        row = df.iloc[idx]
+        subject_entity, subject_type, subject_idx=(
+            row['subject_entity'],
+            row['subject_type'],
+            row['subject_idx'],
+        )
+        object_entity, object_type, object_idx=(
+            row['object_entity'],
+            row['object_type'],
+            row['object_idx'],
+        )
+        if subject_idx[0] < object_idx[0]:
+            question = (
+                '@*'
+                + '[SUBT]'
+                + subject_type 
+                + '[/SUBT]'
+                + '*' 
+                + '[SUB]'
+                + subject_entity 
+                + '[/SUB]'
+                + '@와 #^' 
+                + '[OBJT]'
+                + object_type 
+                + '[/OBJT]'
+                + '^' 
+                + '[OBJ]'
+                + object_entity
+                + '[/OBJ]' 
+                + '#의 관계를 나타내는 문장'
+            )
+        else:
+            question = (
+                '#^'
+                + '[SUBT]'
+                + subject_type 
+                + '[/SUBT]'
+                + '^' 
+                + '[SUB]'
+                + subject_entity 
+                + '[/SUB]'
+                + '#와 @*' 
+                + '[OBJT]'
+                + object_type 
+                + '[/OBJT]'
+                + '*'
+                + '[OBJ]'
+                + object_entity
+                + '[/OBJ]' 
+                + '@의 관계를 나타내는 문장'
+            )
+        new_question.append(question)
 
-    return test_dataset['id'], tokenized_test, test_label
-
-
-def label_to_num(label):
-    """
-    
-    """
-    num_label = []
-    with open('dict_label_to_num.pkl', 'rb') as f:
-        dict_label_to_num = pickle.load(f)
-    for v in label:
-        num_label.append(dict_label_to_num[v])
-
-    return num_label
-
-
-def num_to_label(label):
-    """
-    숫자로 되어 있던 class를 원본 문자열 라벨로 변환 합니다.
-    """
-    origin_label = []
-    with open('dict_num_to_label.pkl', 'rb') as f:
-        dict_num_to_label = pickle.load(f)
-    for v in label:
-        origin_label.append(dict_num_to_label[v])
-
-    return origin_label
+    tokens = ['PER', 'LOC', 'POH', 'DAT', 'NOH', 'ORG']
+    tokenizer.add_tokens(tokens)
+    tokenizer.add_special_tokens({"additional_special_tokens":\
+    ['[SUBT]', '[/SUBT]', '[SUB]', '[/SUB]', '[OBJT]', '[/OBJT]', '[OBJ]', '[/OBJ]']})
+        
+    tokenized_sentences = tokenizer(
+        new_question,
+        list(df['sentence']),
+        return_tensors="pt",
+        padding=True,
+        truncation=True,
+        max_length=256,
+        add_special_tokens=True,
+        )
+        
+    return tokenized_sentences
