@@ -4,6 +4,7 @@ python main_train.py \
 --seed 42 \
 --wandb_path test-project \
 --wandb_name refactor-test-2 \
+--split_ratio 0.2 \
 --fold 5 \
 --model klue/roberta-large \
 --loss LB \
