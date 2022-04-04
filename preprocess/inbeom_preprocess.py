@@ -75,15 +75,9 @@ def clean_punc(texts: List) -> List:
 def preprocessing_dataset_v2(dataset: pd.DataFrame) -> pd.DataFrame:
     """ 
     처음 불러온 csv 파일을 원하는 형태의 DataFrame으로 변경 시켜줍니다.
-    이후 Typed Entity Marker with Punctuation와 전처리릊 진행한 이후 DataFrame을 반환힙니다. 
     
     subject_entity (변겅 전) -> subject_entity, subject_type, subject_idx (변경 후)
     {'word': '비틀즈', 'start_idx': 24, 'end_idx': 26, 'type': 'ORG'} (변경 전) -> "비틀즈", "(24, 26)", "ORG" (변경 후)
-
-    전처리
-        1. 특수 기호 일반화
-        2. 불필요한 특수 기호 제거
-        3. 공백 일반화
     """
     subject_entity = []
     subject_type = []
@@ -115,25 +109,7 @@ def preprocessing_dataset_v2(dataset: pd.DataFrame) -> pd.DataFrame:
                                 'sentence':dataset['sentence'],
                                 'subject_entity':subject_entity, 'subject_type':subject_type, 'subject_idx':subject_idx,
                                 'object_entity':object_entity, 'object_type':object_type, 'object_idx':object_idx,
-                                'label':dataset['label'],})
-
-    dataset = typed_entity_marker_with_punctuation(dataset)
-
-    dataset['sentence'] = dataset['sentence'].pipe(clean_punc)\
-                                            .pipe(remove_special_char)\
-                                            .pipe(remove_repeated_spacing)\
-                                            .pipe(remove_repeated_spacing)
-    
-    dataset['subject_entity'] = dataset['subject_entity'].pipe(clean_punc)\
-                                                        .pipe(remove_special_char)\
-                                                        .pipe(remove_repeated_spacing)\
-                                                        .pipe(remove_repeated_spacing)
-    
-    dataset['object_entity'] = dataset['object_entity'].pipe(clean_punc)\
-                                                        .pipe(remove_special_char)\
-                                                        .pipe(remove_repeated_spacing)\
-                                                        .pipe(remove_repeated_spacing)
-                    
+                                'label':dataset['label'],})                    
   
     return dataset
 
