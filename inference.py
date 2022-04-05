@@ -1,14 +1,15 @@
+import os
 from transformers import AutoTokenizer, AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments
 from torch.utils.data import DataLoader
 from load_data import *
 import pandas as pd
 import torch
 import torch.nn.functional as F
-
 import pickle as pickle
 import numpy as np
 import argparse
 from tqdm import tqdm
+from utilities.main_utilities import *
 
 def inference(model, tokenized_sent, device):
     """
@@ -26,39 +27,15 @@ def inference(model, tokenized_sent, device):
                 attention_mask=data['attention_mask'].to(device),
                 token_type_ids=data['token_type_ids'].to(device)
               )
-    logits = outputs[0]
-    prob = F.softmax(logits, dim=-1).detach().cpu().numpy()
-    logits = logits.detach().cpu().numpy()
-    result = np.argmax(logits, axis=-1)
+        logits = outputs[0]
+        prob = F.softmax(logits, dim=-1).detach().cpu().numpy()
+        logits = logits.detach().cpu().numpy()
+        result = np.argmax(logits, axis=-1)
 
-    output_pred.append(result)
-    output_prob.append(prob)
+        output_pred.append(result)
+        output_prob.append(prob)
 
     return np.concatenate(output_pred).tolist(), np.concatenate(output_prob, axis=0).tolist()
-
-def num_to_label(label):
-    """
-      숫자로 되어 있던 class를 원본 문자열 라벨로 변환 합니다.
-    """
-    origin_label = []
-    with open('dict_num_to_label.pkl', 'rb') as f:
-        dict_num_to_label = pickle.load(f)
-    for v in label:
-        origin_label.append(dict_num_to_label[v])
-    
-    return origin_label
-
-def load_test_dataset(dataset_dir, tokenizer):
-    """
-      test dataset을 불러온 후,
-      tokenizing 합니다.
-    """
-    test_dataset = load_data(dataset_dir)
-    test_label = list(map(int,test_dataset['label'].values))
-    # tokenizing dataset
-    tokenized_test = tokenized_dataset(test_dataset, tokenizer)
-
-    return test_dataset['id'], tokenized_test, test_label
 
 def main(args):
     """
@@ -66,12 +43,12 @@ def main(args):
     """
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     # load tokenizer
-    Tokenizer_NAME = "klue/bert-base"
+    Tokenizer_NAME = "klue/roberta-large"
     tokenizer = AutoTokenizer.from_pretrained(Tokenizer_NAME)
 
     ## load my model
-    MODEL_NAME = args.model_dir # model dir.
-    model = AutoModelForSequenceClassification.from_pretrained(args.model_dir)
+    MODEL_NAME = os.path.join(args.model_dir,args.model_name) # model dir.
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
     model.parameters
     model.to(device)
 
@@ -99,6 +76,7 @@ if __name__ == '__main__':
     
     # model dir
     parser.add_argument('--model_dir', type=str, default="./best_model")
+    parser.add_argument('--model_name', type=str, default=".")
     args = parser.parse_args()
     print(args)
     main(args)
