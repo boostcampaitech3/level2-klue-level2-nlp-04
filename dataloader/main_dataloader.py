@@ -23,7 +23,7 @@ def load_data(dataset_dir:str, generate_option:int,train=True)->pd.DataFrame:
     if generate_option == ONLY_ORIGINAL: #원본 데이터만 쓰는 경우
         pd_dataset = pd.read_csv(dataset_dir)
 
-    elif generate_option == ONLY_GENERATED:
+    elif generate_option == ONLY_GENERATED: 
         pd_dataset = load_generate_data() 
 
     else:
