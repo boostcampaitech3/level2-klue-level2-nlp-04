@@ -81,7 +81,7 @@ def tokenized_dataset(df: pd.DataFrame, tokenizer) -> Dict:
     tokens = ['PER', 'LOC', 'POH', 'DAT', 'NOH', 'ORG']
     tokenizer.add_tokens(tokens)
     tokenizer.add_special_tokens({"additional_special_tokens":\
-    ['[SUBT]', '[/SUBT]', '[SUB]', '[/SUB]', '[OBJT]', '[/OBJT]', '[OBJ]', '[/OBJ]']})
+    ['[MASK]', '[SUBT]', '[/SUBT]', '[SUB]', '[/SUB]', '[OBJT]', '[/OBJT]', '[OBJ]', '[/OBJ]']})
         
     tokenized_sentences = tokenizer(
         new_question,

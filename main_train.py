@@ -21,6 +21,7 @@ from dataloader.main_dataloader import *
 from dataset.main_dataset import *
 from preprocess.main_preprocess import *
 from constants import *
+from augmentation.main_augmentation import *
 
 class CustomTrainer(Trainer):
     def __init__(self, loss_name, *args, **kwargs):
@@ -49,6 +50,7 @@ def train(args):
     # load model and tokenizer
     MODEL_NAME = args.model
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    add_token = args.add_token
 
     # load dataset
     train_dataset = load_data(TRAIN_DIR)
@@ -57,6 +59,9 @@ def train(args):
 
     # tokenizing dataset
     tokenized_train = tokenized_dataset(train_dataset, tokenizer)
+
+    if args.augmentation:
+      tokenized_train = main_augmentation(tokenized_train)
 
     # make dataset for pytorch.
     RE_train_dataset = RE_Dataset(tokenized_train, train_label)
@@ -73,14 +78,14 @@ def train(args):
     model_config.num_labels = 30
 
     model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
-    model.resize_token_embeddings(tokenizer.vocab_size + args.add_token)
+    model.resize_token_embeddings(tokenizer.vocab_size + add_token)
     model.to(device)
 
     # 사용한 option 외에도 다양한 option들이 있습니다.
     # https://huggingface.co/transformers/main_classes/trainer.html#trainingarguments 참고해주세요.
     training_args = TrainingArguments(
         output_dir=SAVE_DIR,          # output directory
-        save_total_limit=5,              # number of total save model.
+        save_total_limit=3,              # number of total save model.
         save_steps=args.save_steps,                 # model saving step.
         num_train_epochs=args.epochs,              # total number of training epochs
         learning_rate=args.lr,               # learning_rate
@@ -153,10 +158,12 @@ def main():
                         default=0.01, help='weight_decay (default: 0.01)')
     parser.add_argument('--metric_for_best_model', type=str, default='f1',
                         help='metric_for_best_model (default: f1)')
-    parser.add_argument('--add_token', type=int, default=14,
-                        help='add token count (default: 14)')
+    parser.add_argument('--add_token', type=int, default=15,
+                        help='add token count (default: 15)')
     parser.add_argument('--split_ratio', type=float, default=0.2,
                         help='Test Val split ratio (default : 0.2)')
+    parser.add_argument('--augmentation', type=bool, default=False,
+                        help='Apply Random Masking/Delteing (default=False)')
     
     args= parser.parse_args()
     wandb.init(name=args.wandb_name, project=args.wandb_path, entity=WANDB_ENT, config = vars(args),)
