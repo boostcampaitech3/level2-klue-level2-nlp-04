@@ -83,7 +83,7 @@ def clean_punc(texts: List) -> List:
 
     return preprocessed_text
 
-def preprocessing_dataset(dataset: pd.DataFrame, train=True) -> pd.DataFrame:
+def preprocessing_dataset(dataset: pd.DataFrame, generate_option:int, train=True) -> pd.DataFrame:
     """ 
     처음 불러온 csv 파일을 원하는 형태의 DataFrame으로 변경 시켜줍니다.
     
@@ -136,9 +136,9 @@ def preprocessing_dataset(dataset: pd.DataFrame, train=True) -> pd.DataFrame:
 
 
     if train:
-        save_preprocessed_data(PKL_TRAIN_PATH, dataset)
+        save_preprocessed_data(f'{PKL_TRAIN_PATH}_{generate_option}.pkl', dataset)
     else:
-        save_preprocessed_data(PKL_TEST_PATH, dataset)
+        save_preprocessed_data(f'{PKL_TEST_PATH}_{generate_option}.pkl', dataset)
 
     return dataset
 

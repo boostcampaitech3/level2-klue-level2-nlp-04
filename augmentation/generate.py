@@ -1,24 +1,32 @@
 import re
 import pandas as pd
 from tqdm import tqdm
+import sys
+sys.path.append("..")
+from constants import *
 
 
 def load_generate_data()-> pd.DataFrame:
 
-    dataset_dir = '/opt/ml/code/augmentation/gen_train_ing.csv'
-
-    pd_dataset = pd.read_csv(dataset_dir, index_col = 0, encoding='utf-8')
-    dataset = preprocessing_generate_dataset(pd_dataset.iloc[:2999])
+    pd_dataset = pd.read_csv(GENERATE_DATA, index_col = 0, encoding='utf-8')
+    pd_dataset = preprocess_generate_data(pd_dataset)
+    dataset = reform_dataset(pd_dataset)
 
     return dataset
 
-def preprocessing_generate_dataset(df:pd.DataFrame)->pd.DataFrame:
-    
+def preprocess_generate_data(df:pd.DataFrame)->pd.DataFrame:
     df = df.pipe(end_word_filtering)\
+           .pipe(bar_filtering)\
            .pipe(entity_spacing_filtering)\
            .pipe(bad_char_filtering)\
            .pipe(short_sentence_filtering)\
-           .pipe(temp_filtering)
+           .pipe(perforation_filtering)\
+           .pipe(press_filtering)\
+           .pipe(del_last_space)
+
+    return df
+
+def reform_dataset(df:pd.DataFrame)->pd.DataFrame:
 
     subject_entity = []
     object_entity = []
@@ -75,39 +83,61 @@ def end_word_filtering(df:pd.DataFrame)->pd.DataFrame:
                '했다', '셌다', '낸다', '된다', '표다', '수다', '줬다']
     
     bad_sentence = []
+    ending_list = set(ending_list)
     for i in tqdm(range(len(df))) :
         flag = 0
         for end_word in ending_list :
-            if end_word in df['sentence'][i] :
+            if  end_word in df['sentence'][i] :
                 flag = 1
-        
-        # bad sentence
+            
+            
+            # bad sentence
         if flag == 0 :
             bad_sentence.append(i)
         
         # good sentence
         if flag == 1 :
             # 2. dot slicing
-            dot_cnt = df['sentence'][i].count(".")
+            # modified _today(0405)
+            # end of sentence need dot point but none
+            dot_cnt = df['sentence'][i].count("다.")
             if dot_cnt >= 1 :
-                first_dot_idx = df['sentence'][i].find(".")
+                first_dot_idx = df['sentence'][i].find("다.")
                 
                 if dot_cnt >= 2 :
-                    second_dot_idx = df['sentence'][i].find(".", first_dot_idx + 1)
-                    
-                    try : 
-                        df['sentence'][i] = df['sentence'][i][:second_dot_idx+1]
-                    except :
-                        df['sentence'][i] = df['sentence'][i][:first_dot_idx+1]
+                    second_dot_idx = df['sentence'][i].find("다.", first_dot_idx + 2)
+                    df['sentence'][i] = df['sentence'][i][:second_dot_idx+2]
                     
                 else :
-                    df['sentence'][i] = df['sentence'][i][:first_dot_idx+1]
+                    df['sentence'][i] = df['sentence'][i][:first_dot_idx+2]
     
     df = df.drop(bad_sentence)
     df['id'] = [i for i in range(len(df))]
     df.reset_index(drop=False, inplace=True)
     df.drop(['index'], axis=1, inplace=True)
     
+    return df
+
+def bar_filtering(df:pd.DataFrame)->pd.DataFrame:
+    
+    bad_sentence = []
+
+    for i in range(len(df)) :
+        if "|" in df['sentence'][i] :
+            bad_cut_point = df['sentence'][i].find("|")
+            
+            if "." in df['sentence'][i][:bad_cut_point] :
+                cut_point = df['sentence'][i][:bad_cut_point].find(".")
+                df['sentence'][i] = df['sentence'][i][:cut_point+1]
+            
+            else :
+                bad_sentence.append(i)
+
+    df = df.drop(bad_sentence)
+    df['id'] = [i for i in range(len(df))]
+    df.reset_index(drop=False, inplace=True)
+    df.drop(['index'], axis=1, inplace=True)
+
     return df
 
 def entity_spacing_filtering(df:pd.DataFrame)->pd.DataFrame:
@@ -131,13 +161,11 @@ def entity_spacing_filtering(df:pd.DataFrame)->pd.DataFrame:
 def bad_char_filtering(df:pd.DataFrame)->pd.DataFrame:
 
     bad_sentence = []
-    bad_list = ['?', '@', '—', '©', '\n\n']
+    bad_list = ['?', '@', '—', '©', '\n\n', '\t', 'http', 'www.']
 
     for i in tqdm(range(len(df))) :
-        flag = 0
         for bad_word in bad_list:
             if bad_word in df['sentence'][i]:
-                flag = 1
                 bad_sentence.append(i)
                 break
 
@@ -163,7 +191,7 @@ def short_sentence_filtering(df:pd.DataFrame)->pd.DataFrame:
     
     return df
 
-def temp_filtering(df:pd.DataFrame)->pd.DataFrame:
+def perforation_filtering(df:pd.DataFrame)->pd.DataFrame:
     
     bad_sentence = []
 
@@ -184,4 +212,28 @@ def temp_filtering(df:pd.DataFrame)->pd.DataFrame:
     df.reset_index(drop=False, inplace=True)
     df.drop(['index'], axis=1, inplace=True)
    
+    return df
+
+def press_filtering(df:pd.DataFrame)->pd.DataFrame:
+
+    for i in range(len(df)) :
+        if "=연합뉴스" in df['sentence'][i] :
+            df['sentence'][i] = df['sentence'][i].replace("=연합뉴스", "")
+            
+    for i in range(len(df)) : 
+        if "이데일리" in df['sentence'][i] :
+            edaily = df['sentence'][i].find("이데일리")
+            edaily_end = df['sentence'][i][edaily:].find("]")
+            df['sentence'][i] = df['sentence'][i].replace(df['sentence'][i][edaily-2:edaily + edaily_end+1], "")
+            
+    for i in range(len(df)) : 
+        if "사진=" in df['sentence'][i] :
+            df['sentence'][i] = df['sentence'][i].replace("사진=", "")
+
+    return df
+
+def del_last_space(df:pd.DataFrame)->pd.DataFrame:
+    for i in range(len(df)) :
+        df['sentence'][i] = re.sub(' +', ' ', df['sentence'][i])
+
     return df

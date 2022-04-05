@@ -59,7 +59,7 @@ def train(args):
     MODEL_NAME = args.model
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-    dataset = load_data(TRAIN_DIR)
+    dataset = load_data(TRAIN_DIR, args.generate_option)
     label = dataset['label'].values
     
     kfold = fold_selection(args)
@@ -176,6 +176,8 @@ def main():
                         help='add token count (default: 14)')
     parser.add_argument('--split_ratio', type=float, default=0.2,
                         help='Test Val split ratio (default : 0.2)')
+    parser.add_argument('--generate_option', type=int, default=0,
+                        help='0 : original / 1 : generated / 2 : concat')
     
     args= parser.parse_args()
     wandb.init(name=args.wandb_name, project=args.wandb_path, entity=WANDB_ENT, config = vars(args),)
