@@ -64,6 +64,8 @@ def train(args):
     
     kfold = fold_selection(args)
     for K ,(train_index, dev_index) in enumerate(kfold.split(dataset, label)):
+        wandb.init(name=args.wandb_name, project=args.wandb_path, entity=WANDB_ENT, config = vars(args),)
+
         # load dataset
         train_dataset = dataset.iloc[train_index]
         dev_dataset = dataset.iloc[dev_index]
@@ -126,11 +128,12 @@ def train(args):
             callbacks = [EarlyStoppingCallback(early_stopping_patience=3)],
             loss_name = args.loss
         )
-
+        wandb.finish()
         # train model
         trainer.train()
         path = os.path.join(BEST_MODEL_DIR, f'{args.wandb_name}{K}')
         model.save_pretrained(path)
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -178,8 +181,7 @@ def main():
                         help='Test Val split ratio (default : 0.2)')
     
     args= parser.parse_args()
-    wandb.init(name=args.wandb_name, project=args.wandb_path, entity=WANDB_ENT, config = vars(args),)
-
+    
     logging.set_verbosity_warning()
     logger = logging.get_logger()
     logger.warning("\n")
