@@ -64,7 +64,7 @@ def train(args):
     
     kfold = fold_selection(args)
     for K ,(train_index, dev_index) in enumerate(kfold.split(dataset, label)):
-        wandb.init(name=args.wandb_name, project=args.wandb_path, entity=WANDB_ENT, config = vars(args),)
+        wandb.init(name=f'{args.wandb_name}_{K}', project=args.wandb_path, entity=WANDB_ENT, config = vars(args),)
 
         # load dataset
         train_dataset = dataset.iloc[train_index]
