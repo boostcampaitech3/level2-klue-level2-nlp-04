@@ -25,8 +25,6 @@ def load_data(dataset_dir:str, train=True, generate=True)->pd.DataFrame:
     else:
         pd_dataset = pd.read_csv(dataset_dir)
 
-    print(pd_dataset)
-
     dataset = preprocessing_dataset(pd_dataset, train)
     
     return dataset
