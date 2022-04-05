@@ -1,4 +1,5 @@
 import os
+import shutil
 import pandas as pd 
 import torch
 import sklearn
@@ -139,6 +140,13 @@ def train(args):
         trainer.train()
         path = os.path.join(BEST_MODEL_DIR, f'{args.wandb_name}{K}')
         model.save_pretrained(path)
+
+        # delete results checkpoint folder
+        del_path = os.path.join(SAVE_DIR, K)
+        if os.path.exists(del_path):
+          print()
+          print(f"******** Deleting results/{K} folder ********")
+          shutil.rmtree(del_path)
         
         # wandb finish
         wandb.finish()
