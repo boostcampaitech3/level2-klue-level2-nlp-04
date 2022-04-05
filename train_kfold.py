@@ -21,6 +21,7 @@ from dataloader.main_dataloader import *
 from dataset.main_dataset import *
 from preprocess.main_preprocess import *
 from constants import *
+from augmentation.main_augmentation import *
 
 class CustomTrainer(Trainer):
     def __init__(self, loss_name, *args, **kwargs):
@@ -77,6 +78,9 @@ def train(args):
         tokenized_train = tokenized_dataset(train_dataset, tokenizer)
         tokenized_dev = tokenized_dataset(dev_dataset, tokenizer)
 
+        if args.augmentation:
+          tokenized_train = main_augmentation(tokenized_train)
+          tokenized_dev =  main_augmentation(tokenized_dev)
         # make dataset for pytorch.
         RE_train_dataset = RE_Dataset(tokenized_train, train_label)
         RE_dev_dataset = RE_Dataset(tokenized_dev, dev_label)
@@ -179,6 +183,8 @@ def main():
                         help='add token count (default: 14)')
     parser.add_argument('--split_ratio', type=float, default=0.2,
                         help='Test Val split ratio (default : 0.2)')
+    parser.add_argument('--augmentation', type=bool, default=True,
+                        help='Apply Random Masking/Delteing (default=False)')
     
     args= parser.parse_args()
     
