@@ -1,8 +1,12 @@
 import sklearn
 import numpy as np
 from sklearn.metrics import accuracy_score
+import pandas as pd
 import pickle as pickle
 from typing import Callable, Dict, List
+import torch
+import torch.nn.functional as F
+
 # from criterion import *
 # from metric import *
 # from optimizer import *
@@ -76,3 +80,28 @@ def num_to_label(label:List[int])->List[str]:
         origin_label.append(dict_num_to_label[v])
     
     return origin_label
+
+def to_nparray(s) :
+    return np.array(list(map(float, s[1:-1].split(','))))
+
+def num_2_label(n):
+    with open('dict_num_to_label.pkl', 'rb') as f:
+        dict_num_to_label = pickle.load(f)
+    origin_label = dict_num_to_label[n]
+    
+    return origin_label
+
+def voting(path_list):
+    df = []
+
+    for path in path_list:
+        df.append(pd.read_csv(path))
+    df[0]['probs'] = df[0]['probs'].apply(lambda x : to_nparray(x)*0.2) + df[1]['probs'].apply(lambda x : to_nparray(x)*0.2) + df[2]['probs'].apply(lambda x : to_nparray(x)*0.2) + df[3]['probs'].apply(lambda x : to_nparray(x)*0.2) + df[4]['probs'].apply(lambda x : to_nparray(x)*0.2)
+
+    for i in range(len(df[0]['probs'])):
+        df[0]['probs'][i] = F.softmax(torch.tensor(df[0]['probs'][i]), dim=0).detach().cpu().numpy()
+    
+    df[0]['pred_label'] = df[0]['probs'].apply(lambda x : num_2_label(np.argmax(x)))
+    df[0]['probs'] = df[0]['probs'].apply(lambda x : str(list(x)))
+    
+    return df[0]
