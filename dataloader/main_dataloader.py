@@ -7,9 +7,10 @@ from dataset.main_dataset import *
 from preprocess.main_preprocess import *
 from constants import * 
 from pickled_data.main_pickle import *
+from augmentation.generate import *
 
 
-def load_data(dataset_dir:str, train=True)->pd.DataFrame:
+def load_data(dataset_dir:str, train=True, generate=True)->pd.DataFrame:
     """ csv 파일을 경로에 맡게 불러 옵니다. """
     if train and os.path.isfile(PKL_TRAIN_PATH):
         return load_preprocessed_data(PKL_TRAIN_PATH)
@@ -17,7 +18,15 @@ def load_data(dataset_dir:str, train=True)->pd.DataFrame:
     if not train and os.path.isfile(PKL_TEST_PATH):
         return load_preprocessed_data(PKL_TEST_PATH)
 
-    pd_dataset = pd.read_csv(dataset_dir)
+    if generate:
+        existed_dataset = pd.read_csv(dataset_dir)
+        generated_dataset = load_generate_data()
+        pd_dataset = pd.concat([existed_dataset, generated_dataset], ignore_index=True)
+    else:
+        pd_dataset = pd.read_csv(dataset_dir)
+
+    print(pd_dataset)
+
     dataset = preprocessing_dataset(pd_dataset, train)
     
     return dataset
