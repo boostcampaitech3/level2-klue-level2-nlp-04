@@ -12,11 +12,15 @@ def random_delete(tokenized_train, indices:List[List[int]]):
     deleted_train = tokenized_train
 
     for idx, index_list in enumerate(indices):
+        if len(index_list) < 3:
+            continue
+
         deleted_id = tokenized_train['input_ids'][idx].tolist()
 
         for i in index_list:
-            if i not in tokenized_to_protect:
-                deleted_id[i] = 1
+            if deleted_id[i] not in tokenized_to_protect:
+                deleted_id.pop(i)
+                deleted_id.append(2)
 
         deleted_train['input_ids'][idx] = torch.tensor(deleted_id)
 
@@ -26,10 +30,13 @@ def random_masking(tokenized_train, indices:List[List[int]]):
     masked_train = tokenized_train
 
     for idx, index_list in enumerate(indices):
+        if len(index_list) < 3:
+            continue
+
         masked_id = tokenized_train['input_ids'][idx].tolist()
 
         for i in index_list:
-            if i not in tokenized_to_protect:
+            if masked_id[i] not in tokenized_to_protect:
                 masked_id[i] = 4
 
         masked_train['input_ids'][idx] = torch.tensor(masked_id)
@@ -37,7 +44,7 @@ def random_masking(tokenized_train, indices:List[List[int]]):
     return masked_train
 
 
-def main_augmentation(tokenized_train, p=0.04):
+def main_augmentation(tokenized_train, p=0.05):
     rand = np.random.random()
 
     # valid_indices 는 p 확률만큼 input_ids에서 랜덤으로 선택된 토큰의 인덱스를 담는 리스트    
@@ -49,7 +56,9 @@ def main_augmentation(tokenized_train, p=0.04):
     # 아래 for 문은 valid_indices에 sentence 의 토큰들의 index들을 다 담는 과정
     for idx, input_ids in enumerate(tokenized_train.input_ids):
         sent_idx = np.where(input_ids == 2)[0].tolist()[0]+1
-        valid_indices[idx] = list(map(lambda x:x+sent_idx, np.where(input_ids[sent_idx:]>1)[0].tolist())) # PAD 전까지의 토큰의 인덱스
+
+        # PAD 전까지의 토큰의 인덱스
+        valid_indices[idx] = list(map(lambda x:x+sent_idx, np.where(input_ids[sent_idx:]>1)[0].tolist())) 
 
 
     # 아래 for 문은 담긴 인덱스들에서 랜덤하게 p의 확률만큼 뽑는 작업
@@ -57,7 +66,7 @@ def main_augmentation(tokenized_train, p=0.04):
         valid_indices[idx] = list(np.random.randint(low=min(indices), high=max(indices), size=int(len(indices)*p)))
     
     # 80%의 확률로 선택된 인덱스들의 토큰들은 [MASK] 로 치환됨
-    # 10%의 확률로 선택된 인덱스들의 토큰들은 [PAD] 로 치환됨
+    # 10%의 확률로 선택된 인덱스들의 토큰들은 삭제됨 
     # 10%의 확률로 원본을 리턴함
     if rand > 0.1 and rand <0.9:
         return random_masking(tokenized_train, valid_indices)

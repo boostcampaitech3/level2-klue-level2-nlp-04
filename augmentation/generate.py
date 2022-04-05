@@ -15,6 +15,10 @@ def load_generate_data()-> pd.DataFrame:
     return dataset
 
 def preprocess_generate_data(df:pd.DataFrame)->pd.DataFrame:
+    df['id'] = [i for i in range(len(df))]
+    df.reset_index(drop=False, inplace=True)
+    df.drop(['index'], axis=1, inplace=True)
+
     df = df.pipe(end_word_filtering)\
            .pipe(bar_filtering)\
            .pipe(entity_spacing_filtering)\
@@ -106,7 +110,8 @@ def end_word_filtering(df:pd.DataFrame)->pd.DataFrame:
                 
                 if dot_cnt >= 2 :
                     second_dot_idx = df['sentence'][i].find("다.", first_dot_idx + 2)
-                    df['sentence'][i] = df['sentence'][i][:second_dot_idx+2]
+                    third_dot_idx = df['sentence'][i].find("다.", second_dot_idx+ 2)
+                    df['sentence'][i] = df['sentence'][i][:third_dot_idx+2]
                     
                 else :
                     df['sentence'][i] = df['sentence'][i][:first_dot_idx+2]

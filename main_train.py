@@ -161,7 +161,7 @@ def main():
                         help='add token count (default: 15)')
     parser.add_argument('--split_ratio', type=float, default=0.2,
                         help='Test Val split ratio (default : 0.2)')
-    parser.add_argument('--augmentation', type=bool, default=False,
+    parser.add_argument('--augmentation', type=bool, default=True,
                         help='Apply Random Masking/Delteing (default=False)')
     parser.add_argument('--generate_option', type=int, default=0,
                         help='0 : original / 1 : generated / 2 : concat')
