@@ -45,7 +45,6 @@ class CustomTrainer(Trainer):
         loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
         return (loss, outputs) if return_outputs else loss
 
-
 def train(args):
     # load model and tokenizer
     MODEL_NAME = args.model
@@ -53,7 +52,7 @@ def train(args):
     add_token = args.add_token
 
     # load dataset
-    train_dataset = load_data(TRAIN_DIR)
+    train_dataset = load_data(TRAIN_DIR, args.generate_option)
 
     train_label = label_to_num(train_dataset['label'].values)
 
@@ -162,9 +161,12 @@ def main():
                         help='add token count (default: 15)')
     parser.add_argument('--split_ratio', type=float, default=0.2,
                         help='Test Val split ratio (default : 0.2)')
-    parser.add_argument('--augmentation', type=bool, default=False,
+    parser.add_argument('--augmentation', type=bool, default=True,
                         help='Apply Random Masking/Delteing (default=False)')
-    
+    parser.add_argument('--generate_option', type=int, default=0,
+                        help='0 : original / 1 : generated / 2 : concat')
+
+
     args= parser.parse_args()
     wandb.init(name=args.wandb_name, project=args.wandb_path, entity=WANDB_ENT, config = vars(args),)
 

@@ -20,8 +20,8 @@ from utilities.criterion.loss import *
 from dataloader.main_dataloader import *
 from dataset.main_dataset import *
 from preprocess.main_preprocess import *
-from constants import *
 from augmentation.main_augmentation import *
+from constants import *
 
 class CustomTrainer(Trainer):
     def __init__(self, loss_name, *args, **kwargs):
@@ -60,13 +60,14 @@ def train(args):
     MODEL_NAME = args.model
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-    dataset = load_data(TRAIN_DIR)
+    dataset = load_data(TRAIN_DIR, args.generate_option)
     label = dataset['label'].values
     
     kfold = fold_selection(args)
     for K ,(train_index, dev_index) in enumerate(kfold.split(dataset, label)):
-        wandb.init(name=f'{args.wandb_name}_{K}', project=args.wandb_path, entity=WANDB_ENT, config = vars(args),)
-
+        # wandb init
+        wandb.init(name=args.wandb_name, project=f'{args.wandb_path}_{K}', entity=WANDB_ENT, config = vars(args),)
+     
         # load dataset
         train_dataset = dataset.iloc[train_index]
         dev_dataset = dataset.iloc[dev_index]
@@ -77,10 +78,11 @@ def train(args):
         # tokenizing dataset
         tokenized_train = tokenized_dataset(train_dataset, tokenizer)
         tokenized_dev = tokenized_dataset(dev_dataset, tokenizer)
-
+        
         if args.augmentation:
           tokenized_train = main_augmentation(tokenized_train)
-          tokenized_dev =  main_augmentation(tokenized_dev)
+          tokenized_dev = main_augmentation(tokenized_dev)
+          
         # make dataset for pytorch.
         RE_train_dataset = RE_Dataset(tokenized_train, train_label)
         RE_dev_dataset = RE_Dataset(tokenized_dev, dev_label)
@@ -132,12 +134,14 @@ def train(args):
             callbacks = [EarlyStoppingCallback(early_stopping_patience=3)],
             loss_name = args.loss
         )
-        wandb.finish()
+
         # train model
         trainer.train()
         path = os.path.join(BEST_MODEL_DIR, f'{args.wandb_name}{K}')
         model.save_pretrained(path)
-
+        
+        # wandb finish
+        wandb.finish()
 
 def main():
     parser = argparse.ArgumentParser()
@@ -153,7 +157,7 @@ def main():
                         help='StratifiedKFold(default) / KFold')                    
     parser.add_argument('--model', type=str, default='klue/roberta-large',
                         help='model type (default: klue/roberta-large)')
-    parser.add_argument('--loss', type=str, default= 'LB',
+    parser.add_argument('--loss', type=str, default= 'focal',
                         help='LB: LabelSmoothing, CE: CrossEntropy, focal: Focal, f1:F1loss')
     parser.add_argument('--wandb_name', type=str, default= 'test',
                         help='wandb name (default: test)')
@@ -163,9 +167,9 @@ def main():
                         help='number of epochs to train (default: 20)')
     parser.add_argument('--lr', type=float, default=5e-5,
                         help='learning rate (default: 5e-5)')
-    parser.add_argument('--batch', type=int, default=16,
+    parser.add_argument('--batch', type=int, default=32,
                         help='input batch size for training (default: 16)')
-    parser.add_argument('--batch_valid', type=int, default=16,
+    parser.add_argument('--batch_valid', type=int, default=32,
                         help='input batch size for validing (default: 16)')
     parser.add_argument('--warmup', type=float, default=0.1,
                         help='warmup_ratio (default: 0.1)')
@@ -183,11 +187,14 @@ def main():
                         help='add token count (default: 14)')
     parser.add_argument('--split_ratio', type=float, default=0.2,
                         help='Test Val split ratio (default : 0.2)')
+    parser.add_argument('--generate_option', type=int, default=0,
+                        help='0 : original / 1 : generated / 2 : concat')
     parser.add_argument('--augmentation', type=bool, default=True,
-                        help='Apply Random Masking/Delteing (default=False)')
+                        help='Apply Random Masking/Delteing (default=True)')
     
     args= parser.parse_args()
     
+
     logging.set_verbosity_warning()
     logger = logging.get_logger()
     logger.warning("\n")
