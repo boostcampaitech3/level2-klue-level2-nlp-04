@@ -1,7 +1,6 @@
 import os
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from torch.utils.data import DataLoader
-from dataloader import *
 import pandas as pd
 import torch
 import torch.nn.functional as F
@@ -48,37 +47,46 @@ def main(args):
     Tokenizer_NAME = args.model 
     tokenizer = AutoTokenizer.from_pretrained(Tokenizer_NAME)
 
-    ## load my model
-    MODEL_NAME = os.path.join(BEST_MODEL_DIR, args.model_name) # model dir.
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
-    model.parameters
-    model.to(device)
+    path_list = []
+    for K in range(args.fold):
+        ## load my model
+        MODEL_NAME = os.path.join(BEST_MODEL_DIR, f'{args.model_name}{K}') # model dir.
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
+        model.parameters
+        model.to(device)
 
-    ## load test datset
-    test_id, test_dataset, test_label = load_test_dataset(TEST_DIR, tokenizer)
-    Re_test_dataset = RE_Dataset(test_dataset ,test_label)
+        ## load test datset
+        test_id, test_dataset, test_label = load_test_dataset(TEST_DIR, tokenizer)
+        Re_test_dataset = RE_Dataset(test_dataset ,test_label)
 
-    ## predict answer
-    pred_answer, output_prob = inference(model, Re_test_dataset, device) # model에서 class 추론
-    pred_answer = num_to_label(pred_answer) # 숫자로 된 class를 원래 문자열 라벨로 변환.
+        ## predict answer
+        pred_answer, output_prob = inference(model, Re_test_dataset, device) # model에서 class 추론
+        pred_answer = num_to_label(pred_answer) # 숫자로 된 class를 원래 문자열 라벨로 변환.
+        
+        ## make csv file with predicted answer
+        #########################################################
+        # 아래 directory와 columns의 형태는 지켜주시기 바랍니다.
+        output = pd.DataFrame({'id':test_id,'pred_label':pred_answer,'probs':output_prob,})
+
+        os.makedirs(f'./prediction/{args.model_name}', exist_ok=True)
+        path = os.path.join(f'./prediction/{args.model_name}', f"submission{K}.csv")
+        path_list.append(path)
+        output.to_csv(path, index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
+        #### 필수!! ##############################################
+        print('---- Finish! ----')
     
-    ## make csv file with predicted answer
-    #########################################################
-    # 아래 directory와 columns의 형태는 지켜주시기 바랍니다.
-    output = pd.DataFrame({'id':test_id,'pred_label':pred_answer,'probs':output_prob,})
-
-    os.makedirs(f'./prediction/{args.model_name}', exist_ok=True)
-    path = os.path.join(f'./prediction/{args.model_name}', "submission.csv")
-    output.to_csv(path, index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
-    #### 필수!! ##############################################
-    print('---- Finish! ----')
+    final_output = voting(path_list)
+    path = os.path.join(f'./prediction/{args.model_name}', "submission_final.csv")
+    final_output.to_csv(path, index=False)
+    print('--------End---------')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     
     # model dir
+    parser.add_argument('--fold', type=int, default=5)
     parser.add_argument('--model', type=str, default='klue/roberta-large')
-    parser.add_argument('--model_name', type=str, default=".")
+    parser.add_argument('--model_name', type=str, default="good")
     args = parser.parse_args()
     print(args)
     main(args)

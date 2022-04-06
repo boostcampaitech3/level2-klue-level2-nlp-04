@@ -26,62 +26,24 @@ def tokenized_dataset(df: pd.DataFrame, tokenizer) -> Dict:
     new_question = []
     for idx in range(len(df)):
         row = df.iloc[idx]
-        subject_entity, subject_type, subject_idx=(
+        subject_entity, subject_type =(
             row['subject_entity'],
             row['subject_type'],
-            row['subject_idx'],
         )
-        object_entity, object_type, object_idx=(
+
+        object_entity, object_type =(
             row['object_entity'],
             row['object_type'],
-            row['object_idx'],
         )
-        if subject_idx[0] < object_idx[0]:
-            question = (
-                '@*'
-                + '[SUBT]'
-                + subject_type 
-                + '[/SUBT]'
-                + '*' 
-                + '[SUB]'
-                + subject_entity 
-                + '[/SUB]'
-                + '@와 #^' 
-                + '[OBJT]'
-                + object_type 
-                + '[/OBJT]'
-                + '^' 
-                + '[OBJ]'
-                + object_entity
-                + '[/OBJ]' 
-                + '#의 관계를 나타내는 문장'
-            )
-        else:
-            question = (
-                '#^'
-                + '[SUBT]'
-                + subject_type 
-                + '[/SUBT]'
-                + '^' 
-                + '[SUB]'
-                + subject_entity 
-                + '[/SUB]'
-                + '#와 @*' 
-                + '[OBJT]'
-                + object_type 
-                + '[/OBJT]'
-                + '*'
-                + '[OBJ]'
-                + object_entity
-                + '[/OBJ]' 
-                + '@의 관계를 나타내는 문장'
-            )
+        
+        question = f'@*[SUBT]{subject_type}[/SUBT]*[SUB]{subject_entity}[/SUB]@와 \
+            #^[OBJT]{object_type}[/OBJT]^[OBJ]{object_entity}[/OBJ]#의 관계를 나타내는 문장'
         new_question.append(question)
 
     tokens = ['PER', 'LOC', 'POH', 'DAT', 'NOH', 'ORG']
     tokenizer.add_tokens(tokens)
     tokenizer.add_special_tokens({"additional_special_tokens":\
-    ['[SUBT]', '[/SUBT]', '[SUB]', '[/SUB]', '[OBJT]', '[/OBJT]', '[OBJ]', '[/OBJ]']})
+    ['[MASK]', '[SUBT]', '[/SUBT]', '[SUB]', '[/SUB]', '[OBJT]', '[/OBJT]', '[OBJ]', '[/OBJ]']})
         
     tokenized_sentences = tokenizer(
         new_question,
