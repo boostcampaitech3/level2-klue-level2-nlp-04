@@ -27,12 +27,11 @@ from constants import *
 from torch.cuda.amp import autocast
 
 class CustomTrainer(Trainer):
-    def __init__(self, loss_name, scheduler = None,num_training_steps =None, *args, **kwargs):
+    def __init__(self, loss_name, scheduler,num_training_steps, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.loss_name= loss_name
-        # self.scheduler = scheduler
-        # self.num_training_steps = num_training_steps
-
+        self.scheduler = scheduler
+        self.num_training_steps = num_training_steps
     def compute_loss(self, model, inputs, return_outputs=False):
         labels = inputs.get("labels")
         # forward pass
@@ -51,24 +50,24 @@ class CustomTrainer(Trainer):
         loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
         return (loss, outputs) if return_outputs else loss
 
-    # def create_scheduler(self, num_training_steps, optimizer: torch.optim.Optimizer = None):
-    #   if self.scheduler == 'linear' or self.scheduler == 'cosine':
-    #     if self.scheduler == 'linear':
-    #       my_scheduler = "linear"
-    #     elif self.scheduler == 'cosine':
-    #       my_scheduler = "cosine_with_restarts"
+    def create_scheduler(self, num_training_steps, optimizer: torch.optim.Optimizer = None):
+      if self.scheduler == 'linear' or self.scheduler == 'cosine':
+        if self.scheduler == 'linear':
+          my_scheduler = "linear"
+        elif self.scheduler == 'cosine':
+          my_scheduler = "cosine_with_restarts"
 
-    #       self.lr_scheduler = get_scheduler(
-    #           my_scheduler,
-    #           optimizer=self.optimizer if optimizer is None else optimizer,
-    #           num_warmup_steps=self.args.get_warmup_steps(num_training_steps),
-    #           num_training_steps=num_training_steps,
-    #       )
+          self.lr_scheduler = get_scheduler(
+              my_scheduler,
+              optimizer=self.optimizer if optimizer is None else optimizer,
+              num_warmup_steps=self.args.get_warmup_steps(num_training_steps),
+              num_training_steps=num_training_steps,
+          )
 
-    #   elif self.scheduler == 'steplr':
-    #     self.lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1080, gamma=0.5)
+      elif self.scheduler == 'steplr':
+        self.lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1620, gamma=0.1)
 
-    #   return self.lr_scheduler
+      return self.lr_scheduler
 
 def fold_selection(args):
     model_select = None
@@ -136,7 +135,7 @@ def train(args):
             learning_rate=args.lr,               # learning_rate
             per_device_train_batch_size=args.batch,  # batch size per device during training
             per_device_eval_batch_size=args.batch_valid,   # batch size for evaluation
-            warmup_steps=500,                # number of warmup steps for learning rate scheduler
+            warmup_steps=540,                # number of warmup steps for learning rate scheduler
             weight_decay=args.warmup,               # strength of weight decay
             logging_dir=LOG_DIR,            # directory for storing logs
             logging_steps=args.logging_steps,              # log saving step.
@@ -157,10 +156,10 @@ def train(args):
             train_dataset=RE_train_dataset,         # training dataset
             eval_dataset=RE_dev_dataset,             # evaluation dataset
             compute_metrics=compute_metrics,         # define metrics function
-            callbacks = [EarlyStoppingCallback(early_stopping_patience=3)],
+            callbacks = [EarlyStoppingCallback(early_stopping_patience=2)],
             loss_name = args.loss,
-            # scheduler = args.scheduler,
-            # num_training_steps = args.epochs * len(train_dataset) //  args.batch
+            scheduler = args.scheduler,
+            num_training_steps = args.epochs * len(train_dataset) //  args.batch
             # num_training_steps = args.epochs * len(train_dataset) //  args.batch // 3
         )
 
@@ -207,23 +206,23 @@ def main():
     parser.add_argument('--lr', type=float, default=5e-5,
                         help='learning rate (default: 5e-5)')
     parser.add_argument('--batch', type=int, default=32,
-                        help='input batch size for training (default: 16)')
+                        help='input batch size for training (default: 32)')
     parser.add_argument('--batch_valid', type=int, default=32,
-                        help='input batch size for validing (default: 16)')
+                        help='input batch size for validing (default: 32)')
     parser.add_argument('--warmup', type=float, default=0.1,
                         help='warmup_ratio (default: 0.1)')
-    parser.add_argument('--eval_steps', type=int, default=500,
-                        help='eval_steps (default: 500)')
-    parser.add_argument('--save_steps', type=int, default=500,
-                        help='save_steps (default: 500)')
+    parser.add_argument('--eval_steps', type=int, default=540,
+                        help='eval_steps (default: 540)')
+    parser.add_argument('--save_steps', type=int, default=540,
+                        help='save_steps (default: 540)')
     parser.add_argument('--logging_steps', type=int,
                         default=100, help='logging_steps (default: 100)')
     parser.add_argument('--weight_decay', type=float,
                         default=0.01, help='weight_decay (default: 0.01)')
     parser.add_argument('--metric_for_best_model', type=str, default='f1',
                         help='metric_for_best_model (default: f1)')
-    parser.add_argument('--add_token', type=int, default=14,
-                        help='add token count (default: 14)')
+    parser.add_argument('--add_token', type=int, default=15,
+                        help='add token count (default: 15)')
     parser.add_argument('--split_ratio', type=float, default=0.2,
                         help='Test Val split ratio (default : 0.2)')
     parser.add_argument('--generate_option', type=int, default=0,
