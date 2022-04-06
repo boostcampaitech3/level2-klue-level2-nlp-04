@@ -130,12 +130,12 @@ def train(args):
         training_args = TrainingArguments(
             output_dir=f'{SAVE_DIR}/{K}',          # output directory
             save_total_limit=5,              # number of total save model.
-            save_steps=args.save_steps,                 # model saving step.
+            save_steps=len(train_dataset) // args.batch // 2, # model saving step.
             num_train_epochs=args.epochs,              # total number of training epochs
             learning_rate=args.lr,               # learning_rate
             per_device_train_batch_size=args.batch,  # batch size per device during training
             per_device_eval_batch_size=args.batch_valid,   # batch size for evaluation
-            warmup_steps=540,                # number of warmup steps for learning rate scheduler
+            warmup_steps=args.warmup_steps,                # number of warmup steps for learning rate scheduler
             weight_decay=args.warmup,               # strength of weight decay
             logging_dir=LOG_DIR,            # directory for storing logs
             logging_steps=args.logging_steps,              # log saving step.
@@ -143,7 +143,7 @@ def train(args):
                                         # `no`: No evaluation during training.
                                         # `steps`: Evaluate every `eval_steps`.
                                         # `epoch`: Evaluate every end of epoch.
-            eval_steps = args.eval_steps,            # evaluation step.
+        eval_steps = len(train_dataset) //  args.batch // 2, # evaluation step.
             load_best_model_at_end = True,
             metric_for_best_model = args.metric_for_best_model,
             report_to='wandb',
@@ -211,10 +211,6 @@ def main():
                         help='input batch size for validing (default: 32)')
     parser.add_argument('--warmup', type=float, default=0.1,
                         help='warmup_ratio (default: 0.1)')
-    parser.add_argument('--eval_steps', type=int, default=540,
-                        help='eval_steps (default: 540)')
-    parser.add_argument('--save_steps', type=int, default=540,
-                        help='save_steps (default: 540)')
     parser.add_argument('--logging_steps', type=int,
                         default=100, help='logging_steps (default: 100)')
     parser.add_argument('--weight_decay', type=float,
@@ -229,6 +225,8 @@ def main():
                         help='0 : original / 1 : generated / 2 : concat')
     parser.add_argument('--augmentation', type=bool, default=True,
                         help='Apply Random Masking/Delteing (default=True)')
+    parser.add_argument('--warmup_steps', type=int,default= 810,
+                        help='warmup_steps (default: 810)')
     
     args= parser.parse_args()
     
