@@ -166,6 +166,7 @@ def train(args):
 
         # delete results checkpoint folder
         del_path = os.path.join(SAVE_DIR, str(K))
+
         if os.path.exists(del_path):
           print()
           print(f"******** Deleting results/{K} folder ********")

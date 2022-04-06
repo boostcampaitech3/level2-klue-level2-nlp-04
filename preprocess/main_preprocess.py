@@ -83,7 +83,7 @@ def clean_punc(texts: List) -> List:
 
     return preprocessed_text
 
-def preprocessing_dataset(dataset: pd.DataFrame, train=True) -> pd.DataFrame:
+def preprocessing_dataset(dataset: pd.DataFrame, generate_option:int, train=True) -> pd.DataFrame:
     """ 
     처음 불러온 csv 파일을 원하는 형태의 DataFrame으로 변경 시켜줍니다.
     
@@ -92,34 +92,34 @@ def preprocessing_dataset(dataset: pd.DataFrame, train=True) -> pd.DataFrame:
     """
     subject_entity = []
     subject_type = []
-    subject_idx = []
+    # subject_idx = []
 
     object_entity = []
     object_type = []
-    object_idx =[]
+    # object_idx =[]
 
     for sub, obj in zip(dataset['subject_entity'], dataset['object_entity']):
 
         sub_entity = eval(sub)['word']
         sub_type = eval(sub)['type']
-        sub_idx = (int(eval(sub)['start_idx']), int(eval(sub)['end_idx']))
+        # sub_idx = (int(eval(sub)['start_idx']), int(eval(sub)['end_idx']))
 
         obj_entity = eval(obj)['word']
         obj_type = eval(obj)['type']
-        obj_idx = (int(eval(obj)['start_idx']), int(eval(obj)['end_idx']))
+        # obj_idx = (int(eval(obj)['start_idx']), int(eval(obj)['end_idx']))
 
         subject_entity.append(sub_entity)
         subject_type.append(sub_type)
-        subject_idx.append(sub_idx)
+        # subject_idx.append(sub_idx)
 
         object_entity.append(obj_entity)
         object_type.append(obj_type)
-        object_idx.append(obj_idx)
+        # object_idx.append(obj_idx)
 
     dataset = pd.DataFrame({'id':dataset['id'], 
                                 'sentence':dataset['sentence'],
-                                'subject_entity':subject_entity, 'subject_type':subject_type, 'subject_idx':subject_idx,
-                                'object_entity':object_entity, 'object_type':object_type, 'object_idx':object_idx,
+                                'subject_entity':subject_entity, 'subject_type':subject_type,
+                                'object_entity':object_entity, 'object_type':object_type,
                                 'label':dataset['label'],})                    
 
 
@@ -134,11 +134,10 @@ def preprocessing_dataset(dataset: pd.DataFrame, train=True) -> pd.DataFrame:
     for feat in feature:
         dataset[feat] = remove_repeated_spacing(remove_special_char(clean_punc(dataset[feat])))
 
-
     if train:
-        save_preprocessed_data(PKL_TRAIN_PATH, dataset)
+        save_preprocessed_data(f'{PKL_TRAIN_PATH}_{generate_option}.pkl', dataset)
     else:
-        save_preprocessed_data(PKL_TEST_PATH, dataset)
+        save_preprocessed_data(f'{PKL_TEST_PATH}_{generate_option}.pkl', dataset)
 
     return dataset
 
@@ -154,50 +153,17 @@ def typed_entity_marker_with_punctuation(df: pd.DataFrame) -> pd.DataFrame:
     for idx in range(len(df)):
         row = df.iloc[idx]
         sentence = row['sentence']
-        subject_entity, subject_type, subject_idx=(
+        subject_entity, subject_type =(
             row['subject_entity'],
             row['subject_type'],
-            row['subject_idx'],
         )
-        object_entity, object_type, object_idx=(
+        object_entity, object_type =(
             row['object_entity'],
             row['object_type'],
-            row['object_idx'],
         )
 
-        if subject_idx[0] < object_idx[0]:
-            sentence = (
-                sentence[:subject_idx[0]]
-                + '@*'
-                + subject_type 
-                + '*' 
-                + subject_entity
-                + '@' 
-                + sentence[subject_idx[1]+1:object_idx[0]]
-                + '#^' 
-                + object_type
-                + '^' 
-                + object_entity 
-                + '#' 
-                + sentence[object_idx[1]+1:]
-            )
-        else:
-            sentence = (
-                sentence[:object_idx[0]]
-                + '#^'
-                + object_type 
-                + '^' 
-                + object_entity
-                + '#' 
-                + sentence[object_idx[1]+1:subject_idx[0]]
-                + '@*' 
-                + subject_type
-                + '*'
-                + subject_entity 
-                + '@'
-                + sentence[subject_idx[1]+1:]
-            )
-        
+        sentence = sentence.replace(subject_entity, f'@*{subject_type}*{subject_entity}@')
+        sentence = sentence.replace(object_entity, f'#^{object_type}^{object_entity}#')
         new_sentence.append(sentence)
 
     df['sentence'] = new_sentence
