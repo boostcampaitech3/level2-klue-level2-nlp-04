@@ -12,8 +12,7 @@ from transformers import (
   TrainingArguments,
   EarlyStoppingCallback,
   AdamW,
-  get_linear_schedule_with_warmup,
-  get_cosine_with_hard_restarts_schedule_with_warmup
+  get_scheduler
   )
 from transformers.utils import logging
 import wandb
@@ -27,10 +26,11 @@ from constants import *
 from augmentation.main_augmentation import *
 
 class CustomTrainer(Trainer):
-    def __init__(self, loss_name, scheduler, *args, **kwargs):
+    def __init__(self, loss_name, scheduler,num_training_steps, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.loss_name= loss_name
         self.scheduler = scheduler
+        self.num_training_steps = num_training_steps
     def compute_loss(self, model, inputs, return_outputs=False):
         labels = inputs.get("labels")
         # forward pass
@@ -49,22 +49,24 @@ class CustomTrainer(Trainer):
         loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
         return (loss, outputs) if return_outputs else loss
 
-    def create_optimizer_and_scheduler(self, num_training_steps: int):
+    def create_scheduler(self, num_training_steps, optimizer: torch.optim.Optimizer = None):
+      if self.scheduler == 'linear' or self.scheduler == 'cosine':
         if self.scheduler == 'linear':
-          self.lr_scheduler = get_linear_schedule_with_warmup(
-              self.optimizer,
-              num_warmup_steps=self.args.warmup_steps, 
-              num_training_steps=self.num_training_steps
-          )
+          my_scheduler = "linear"
         elif self.scheduler == 'cosine':
-          self.lr_scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
-              self.optimizer,
-              num_warmup_steps=self.args.warmup_steps, 
-              num_training_steps=self.num_training_steps,
+          my_scheduler = "cosine_with_restarts"
+
+          self.lr_scheduler = get_scheduler(
+              my_scheduler,
+              optimizer=self.optimizer if optimizer is None else optimizer,
+              num_warmup_steps=self.args.get_warmup_steps(num_training_steps),
+              num_training_steps=num_training_steps,
           )
-        elif self.scheduler == 'steplr':
-          self.lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1, gamma=0.1)
-            
+
+      elif self.scheduler == 'steplr':
+        self.lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1080, gamma=0.5)
+
+      return self.lr_scheduler
 
 def train(args):
     # load model and tokenizer
@@ -121,8 +123,8 @@ def train(args):
                                     # `epoch`: Evaluate every end of epoch.
         eval_steps = args.eval_steps,            # evaluation step.
         load_best_model_at_end = True,
-        metric_for_best_model = args.metric_for_best_model,
-        report_to='wandb' 
+        # metric_for_best_model = args.metric_for_best_model,
+        report_to='wandb',
     )
 
     trainer = CustomTrainer(
@@ -131,9 +133,11 @@ def train(args):
         train_dataset=X_train,         # training dataset
         eval_dataset=X_val,             # evaluation dataset
         compute_metrics=compute_metrics,         # define metrics function
-        callbacks = [EarlyStoppingCallback(early_stopping_patience=3)],
+        callbacks = [EarlyStoppingCallback(early_stopping_patience=1)],
         loss_name = args.loss,
-        scheduler = args.scheduler
+        scheduler = args.scheduler,
+        num_training_steps = args.epochs * len(train_dataset) //  args.batch
+        # num_training_steps = args.epochs * len(train_dataset) //  args.batch // 3
     )
 
     # train model
