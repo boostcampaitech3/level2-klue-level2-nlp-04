@@ -23,14 +23,17 @@ def inference(model, tokenized_sent, device):
     output_prob = []
     for i, data in enumerate(tqdm(dataloader)):
         with torch.no_grad():
-            outputs = model(
-                input_ids=data['input_ids'].to(device),
-                attention_mask=data['attention_mask'].to(device),
-                token_type_ids=data['token_type_ids'].to(device)
-              )
+            with torch.cuda.amp.autocast():
+                outputs = model(
+                    input_ids=data['input_ids'].to(device),
+                    attention_mask=data['attention_mask'].to(device),
+                    token_type_ids=data['token_type_ids'].to(device)
+                )
+
         logits = outputs[0]
-        prob = F.softmax(logits, dim=-1).detach().cpu().numpy()
+        # prob = F.softmax(logits, dim=-1).detach().cpu().numpy()
         logits = logits.detach().cpu().numpy()
+        prob = logits
         result = np.argmax(logits, axis=-1)
 
         output_pred.append(result)
@@ -69,7 +72,7 @@ def main(args):
         output = pd.DataFrame({'id':test_id,'pred_label':pred_answer,'probs':output_prob,})
 
         os.makedirs(f'./prediction/{args.model_name}', exist_ok=True)
-        path = os.path.join(f'./prediction/{args.model_name}', f"submission{K}.csv")
+        path = os.path.join(f'./prediction/{args.model_name}', f"submission{K}_ver2.csv")
         path_list.append(path)
         output.to_csv(path, index=False) # 최종적으로 완성된 예측한 라벨 csv 파일 형태로 저장.
         #### 필수!! ##############################################
@@ -86,7 +89,7 @@ if __name__ == '__main__':
     # model dir
     parser.add_argument('--fold', type=int, default=5)
     parser.add_argument('--model', type=str, default='klue/roberta-large')
-    parser.add_argument('--model_name', type=str, default="good")
+    parser.add_argument('--model_name', type=str, default="kfold-augmentation-10p-focal-all_data")
     args = parser.parse_args()
     print(args)
     main(args)
