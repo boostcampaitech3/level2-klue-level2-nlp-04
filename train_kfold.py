@@ -11,7 +11,8 @@ from transformers import (
   AutoModelForSequenceClassification,
   Trainer,
   TrainingArguments,
-  EarlyStoppingCallback
+  EarlyStoppingCallback,
+  get_scheduler
   )
 from transformers.utils import logging
 import wandb
@@ -46,6 +47,25 @@ class CustomTrainer(Trainer):
         loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
         return (loss, outputs) if return_outputs else loss
 
+    def create_scheduler(self, num_training_steps, optimizer: torch.optim.Optimizer = None):
+      if self.scheduler == 'linear' or self.scheduler == 'cosine':
+        if self.scheduler == 'linear':
+          my_scheduler = "linear"
+        elif self.scheduler == 'cosine':
+          my_scheduler = "cosine_with_restarts"
+
+          self.lr_scheduler = get_scheduler(
+              my_scheduler,
+              optimizer=self.optimizer if optimizer is None else optimizer,
+              num_warmup_steps=self.args.get_warmup_steps(num_training_steps),
+              num_training_steps=num_training_steps,
+          )
+
+      elif self.scheduler == 'steplr':
+        self.lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1080, gamma=0.5)
+
+      return self.lr_scheduler
+
 def fold_selection(args):
     model_select = None
 
@@ -67,7 +87,7 @@ def train(args):
     kfold = fold_selection(args)
     for K ,(train_index, dev_index) in enumerate(kfold.split(dataset, label)):
         # wandb init
-        wandb.init(name=args.wandb_name, project=f'{args.wandb_path}_{K}', entity=WANDB_ENT, config = vars(args),)
+        wandb.init(name=f'{args.wandb_path}_{K}', project=args.wandb_name, entity=WANDB_ENT, config = vars(args),)
      
         # load dataset
         train_dataset = dataset.iloc[train_index]
@@ -133,7 +153,10 @@ def train(args):
             eval_dataset=RE_dev_dataset,             # evaluation dataset
             compute_metrics=compute_metrics,         # define metrics function
             callbacks = [EarlyStoppingCallback(early_stopping_patience=3)],
-            loss_name = args.loss
+            loss_name = args.loss,
+            scheduler = args.scheduler,
+            num_training_steps = args.epochs * len(train_dataset) //  args.batch
+            # num_training_steps = args.epochs * len(train_dataset) //  args.batch // 3
         )
 
         # train model
@@ -142,7 +165,8 @@ def train(args):
         model.save_pretrained(path)
 
         # delete results checkpoint folder
-        del_path = os.path.join(SAVE_DIR, K)
+        del_path = os.path.join(SAVE_DIR, str(K))
+
         if os.path.exists(del_path):
           print()
           print(f"******** Deleting results/{K} folder ********")
@@ -167,6 +191,8 @@ def main():
                         help='model type (default: klue/roberta-large)')
     parser.add_argument('--loss', type=str, default= 'focal',
                         help='LB: LabelSmoothing, CE: CrossEntropy, focal: Focal, f1:F1loss')
+    parser.add_argument('--scheduler', type=str, default= 'linear',
+                        help='linear, cosine, steplr')
     parser.add_argument('--wandb_name', type=str, default= 'test',
                         help='wandb name (default: test)')
 
