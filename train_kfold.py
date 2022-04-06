@@ -1,4 +1,5 @@
 import os
+import shutil
 import pandas as pd 
 import torch
 import sklearn
@@ -10,7 +11,8 @@ from transformers import (
   AutoModelForSequenceClassification,
   Trainer,
   TrainingArguments,
-  EarlyStoppingCallback
+  EarlyStoppingCallback,
+  get_scheduler
   )
 from transformers.utils import logging
 import wandb
@@ -20,6 +22,7 @@ from utilities.criterion.loss import *
 from dataloader.main_dataloader import *
 from dataset.main_dataset import *
 from preprocess.main_preprocess import *
+from augmentation.main_augmentation import *
 from constants import *
 
 class CustomTrainer(Trainer):
@@ -44,6 +47,25 @@ class CustomTrainer(Trainer):
         loss = loss_fct(logits.view(-1, self.model.config.num_labels), labels.view(-1))
         return (loss, outputs) if return_outputs else loss
 
+    def create_scheduler(self, num_training_steps, optimizer: torch.optim.Optimizer = None):
+      if self.scheduler == 'linear' or self.scheduler == 'cosine':
+        if self.scheduler == 'linear':
+          my_scheduler = "linear"
+        elif self.scheduler == 'cosine':
+          my_scheduler = "cosine_with_restarts"
+
+          self.lr_scheduler = get_scheduler(
+              my_scheduler,
+              optimizer=self.optimizer if optimizer is None else optimizer,
+              num_warmup_steps=self.args.get_warmup_steps(num_training_steps),
+              num_training_steps=num_training_steps,
+          )
+
+      elif self.scheduler == 'steplr':
+        self.lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1080, gamma=0.5)
+
+      return self.lr_scheduler
+
 def fold_selection(args):
     model_select = None
 
@@ -59,11 +81,14 @@ def train(args):
     MODEL_NAME = args.model
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
-    dataset = load_data(TRAIN_DIR)
+    dataset = load_data(TRAIN_DIR, args.generate_option)
     label = dataset['label'].values
     
     kfold = fold_selection(args)
     for K ,(train_index, dev_index) in enumerate(kfold.split(dataset, label)):
+        # wandb init
+        wandb.init(name=args.wandb_name, project=f'{args.wandb_path}_{K}', entity=WANDB_ENT, config = vars(args),)
+     
         # load dataset
         train_dataset = dataset.iloc[train_index]
         dev_dataset = dataset.iloc[dev_index]
@@ -74,7 +99,11 @@ def train(args):
         # tokenizing dataset
         tokenized_train = tokenized_dataset(train_dataset, tokenizer)
         tokenized_dev = tokenized_dataset(dev_dataset, tokenizer)
-
+        
+        if args.augmentation:
+          tokenized_train = main_augmentation(tokenized_train)
+          tokenized_dev = main_augmentation(tokenized_dev)
+          
         # make dataset for pytorch.
         RE_train_dataset = RE_Dataset(tokenized_train, train_label)
         RE_dev_dataset = RE_Dataset(tokenized_dev, dev_label)
@@ -124,13 +153,26 @@ def train(args):
             eval_dataset=RE_dev_dataset,             # evaluation dataset
             compute_metrics=compute_metrics,         # define metrics function
             callbacks = [EarlyStoppingCallback(early_stopping_patience=3)],
-            loss_name = args.loss
+            loss_name = args.loss,
+            scheduler = args.scheduler,
+            num_training_steps = args.epochs * len(train_dataset) //  args.batch
+            # num_training_steps = args.epochs * len(train_dataset) //  args.batch // 3
         )
 
         # train model
         trainer.train()
         path = os.path.join(BEST_MODEL_DIR, f'{args.wandb_name}{K}')
         model.save_pretrained(path)
+
+        # delete results checkpoint folder
+        del_path = os.path.join(SAVE_DIR, str(K))
+        if os.path.exists(del_path):
+          print()
+          print(f"******** Deleting results/{K} folder ********")
+          shutil.rmtree(del_path)
+        
+        # wandb finish
+        wandb.finish()
 
 def main():
     parser = argparse.ArgumentParser()
@@ -146,8 +188,10 @@ def main():
                         help='StratifiedKFold(default) / KFold')                    
     parser.add_argument('--model', type=str, default='klue/roberta-large',
                         help='model type (default: klue/roberta-large)')
-    parser.add_argument('--loss', type=str, default= 'LB',
+    parser.add_argument('--loss', type=str, default= 'focal',
                         help='LB: LabelSmoothing, CE: CrossEntropy, focal: Focal, f1:F1loss')
+    parser.add_argument('--scheduler', type=str, default= 'linear',
+                        help='linear, cosine, steplr')
     parser.add_argument('--wandb_name', type=str, default= 'test',
                         help='wandb name (default: test)')
 
@@ -156,9 +200,9 @@ def main():
                         help='number of epochs to train (default: 20)')
     parser.add_argument('--lr', type=float, default=5e-5,
                         help='learning rate (default: 5e-5)')
-    parser.add_argument('--batch', type=int, default=16,
+    parser.add_argument('--batch', type=int, default=32,
                         help='input batch size for training (default: 16)')
-    parser.add_argument('--batch_valid', type=int, default=16,
+    parser.add_argument('--batch_valid', type=int, default=32,
                         help='input batch size for validing (default: 16)')
     parser.add_argument('--warmup', type=float, default=0.1,
                         help='warmup_ratio (default: 0.1)')
@@ -176,9 +220,13 @@ def main():
                         help='add token count (default: 14)')
     parser.add_argument('--split_ratio', type=float, default=0.2,
                         help='Test Val split ratio (default : 0.2)')
+    parser.add_argument('--generate_option', type=int, default=0,
+                        help='0 : original / 1 : generated / 2 : concat')
+    parser.add_argument('--augmentation', type=bool, default=True,
+                        help='Apply Random Masking/Delteing (default=True)')
     
     args= parser.parse_args()
-    wandb.init(name=args.wandb_name, project=args.wandb_path, entity=WANDB_ENT, config = vars(args),)
+    
 
     logging.set_verbosity_warning()
     logger = logging.get_logger()
