@@ -51,7 +51,6 @@ class CustomTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
     def create_scheduler(self, num_training_steps, optimizer: torch.optim.Optimizer = None):
-      print(self.scheduler)
       if self.scheduler == 'linear' or self.scheduler == 'cosine':
         if self.scheduler == 'linear':
           my_scheduler = "linear"
