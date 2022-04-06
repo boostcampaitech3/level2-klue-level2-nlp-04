@@ -11,7 +11,6 @@ from transformers import (
   Trainer,
   TrainingArguments,
   EarlyStoppingCallback,
-  AdamW,
   get_scheduler
   )
 from transformers.utils import logging
@@ -107,13 +106,13 @@ def train(args):
     # https://huggingface.co/transformers/main_classes/trainer.html#trainingarguments 참고해주세요.
     training_args = TrainingArguments(
         output_dir=SAVE_DIR,          # output directory
-        save_total_limit=3,              # number of total save model.
-        save_steps=args.save_steps,                 # model saving step.
+        save_total_limit=5,              # number of total save model.
+        save_steps=len(train_dataset) // args.batch // 2, # model saving step.
         num_train_epochs=args.epochs,              # total number of training epochs
         learning_rate=args.lr,               # learning_rate
         per_device_train_batch_size=args.batch,  # batch size per device during training
         per_device_eval_batch_size=args.batch_valid,   # batch size for evaluation
-        warmup_steps=540,                # number of warmup steps for learning rate scheduler
+        warmup_steps=args.warmup_steps,                # number of warmup steps for learning rate scheduler
         weight_decay=args.warmup,               # strength of weight decay
         logging_dir=LOG_DIR,            # directory for storing logs
         logging_steps=args.logging_steps,              # log saving step.
@@ -121,9 +120,9 @@ def train(args):
                                     # `no`: No evaluation during training.
                                     # `steps`: Evaluate every `eval_steps`.
                                     # `epoch`: Evaluate every end of epoch.
-        eval_steps = args.eval_steps,            # evaluation step.
+        eval_steps = len(train_dataset) //  args.batch // 2, # evaluation step.
         load_best_model_at_end = True,
-        # metric_for_best_model = args.metric_for_best_model,
+        metric_for_best_model = args.metric_for_best_model,
         report_to='wandb',
     )
 
@@ -133,7 +132,7 @@ def train(args):
         train_dataset=X_train,         # training dataset
         eval_dataset=X_val,             # evaluation dataset
         compute_metrics=compute_metrics,         # define metrics function
-        callbacks = [EarlyStoppingCallback(early_stopping_patience=1)],
+        callbacks = [EarlyStoppingCallback(early_stopping_patience=2)],
         loss_name = args.loss,
         scheduler = args.scheduler,
         num_training_steps = args.epochs * len(train_dataset) //  args.batch
@@ -153,11 +152,9 @@ def main():
                         help='random seed (default: 42)')
     parser.add_argument('--wandb_path', type= str, default= 'test-project',
                         help='wandb graph, save_dir basic path (default: test-project') 
-    parser.add_argument('--fold', type=int, default=5,
-                        help='fold (default: 5)')
     parser.add_argument('--model', type=str, default='klue/roberta-large',
                         help='model type (default: klue/roberta-large)')
-    parser.add_argument('--loss', type=str, default= 'LB',
+    parser.add_argument('--loss', type=str, default= 'focal',
                         help='LB: LabelSmoothing, CE: CrossEntropy, focal: Focal, f1:F1loss')
     parser.add_argument('--scheduler', type=str, default= 'linear',
                         help='linear, cosine, steplr')
@@ -169,16 +166,12 @@ def main():
                         help='number of epochs to train (default: 20)')
     parser.add_argument('--lr', type=float, default=5e-5,
                         help='learning rate (default: 5e-5)')
-    parser.add_argument('--batch', type=int, default=16,
-                        help='input batch size for training (default: 16)')
-    parser.add_argument('--batch_valid', type=int, default=16,
-                        help='input batch size for validing (default: 16)')
+    parser.add_argument('--batch', type=int, default=32,
+                        help='input batch size for training (default: 32)')
+    parser.add_argument('--batch_valid', type=int, default=32,
+                        help='input batch size for validing (default: 32)')
     parser.add_argument('--warmup', type=float, default=0.1,
                         help='warmup_ratio (default: 0.1)')
-    parser.add_argument('--eval_steps', type=int, default=540,
-                        help='eval_steps (default: 500)')
-    parser.add_argument('--save_steps', type=int, default=540,
-                        help='save_steps (default: 500)')
     parser.add_argument('--logging_steps', type=int,
                         default=100, help='logging_steps (default: 100)')
     parser.add_argument('--weight_decay', type=float,
@@ -193,7 +186,8 @@ def main():
                         help='Apply Random Masking/Delteing (default=False)')
     parser.add_argument('--generate_option', type=int, default=0,
                         help='0 : original / 1 : generated / 2 : concat')
-
+    parser.add_argument('--warmup_steps', type=int,default= 810,
+                        help='warmup_steps (default: 810)')
 
     args= parser.parse_args()
     wandb.init(name=args.wandb_name, project=args.wandb_path, entity=WANDB_ENT, config = vars(args),)
