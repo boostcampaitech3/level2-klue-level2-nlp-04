@@ -53,7 +53,7 @@ def main(args):
     path_list = []
     for K in range(args.fold):
         ## load my model
-        MODEL_NAME = os.path.join(BEST_MODEL_DIR, f'{args.model_name}{K}') # model dir.
+        MODEL_NAME = os.path.join(BEST_MODEL_DIR, f'{args.model_name}_kfold{K}') # model dir.
         model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
         model.parameters
         model.to(device)

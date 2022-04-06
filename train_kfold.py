@@ -27,7 +27,7 @@ from constants import *
 from torch.cuda.amp import autocast
 
 class CustomTrainer(Trainer):
-    def __init__(self, loss_name, scheduler,num_training_steps, *args, **kwargs):
+    def __init__(self, loss_name, scheduler, num_training_steps, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.loss_name= loss_name
         self.scheduler = scheduler
@@ -51,18 +51,19 @@ class CustomTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
     def create_scheduler(self, num_training_steps, optimizer: torch.optim.Optimizer = None):
+      print(self.scheduler)
       if self.scheduler == 'linear' or self.scheduler == 'cosine':
         if self.scheduler == 'linear':
           my_scheduler = "linear"
         elif self.scheduler == 'cosine':
           my_scheduler = "cosine_with_restarts"
 
-          self.lr_scheduler = get_scheduler(
-              my_scheduler,
-              optimizer=self.optimizer if optimizer is None else optimizer,
-              num_warmup_steps=self.args.get_warmup_steps(num_training_steps),
-              num_training_steps=num_training_steps,
-          )
+        self.lr_scheduler = get_scheduler(
+            my_scheduler,
+            optimizer=self.optimizer if optimizer is None else optimizer,
+            num_warmup_steps=self.args.get_warmup_steps(num_training_steps),
+            num_training_steps=num_training_steps,
+        )
 
       elif self.scheduler == 'steplr':
         self.lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1620, gamma=0.1)
