@@ -44,7 +44,7 @@ def random_masking(tokenized_train, indices:List[List[int]]):
     return masked_train
 
 
-def main_augmentation(tokenized_train, p=0.05):
+def main_augmentation(tokenized_train, p=0.1):
     rand = np.random.random()
 
     # valid_indices 는 p 확률만큼 input_ids에서 랜덤으로 선택된 토큰의 인덱스를 담는 리스트    

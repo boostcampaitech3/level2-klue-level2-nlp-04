@@ -24,7 +24,6 @@ from dataset.main_dataset import *
 from preprocess.main_preprocess import *
 from augmentation.main_augmentation import *
 from constants import *
-from torch.cuda.amp import autocast
 
 class CustomTrainer(Trainer):
     def __init__(self, loss_name, scheduler, num_training_steps, *args, **kwargs):
@@ -89,8 +88,11 @@ def train(args):
     
     kfold = fold_selection(args)
     for K ,(train_index, dev_index) in enumerate(kfold.split(dataset, label)):
+        if K!=args.myk: #각자 수정
+          continue
+
         # wandb init
-        wandb.init(name=f'{args.wandb_path}_{K}', project=args.wandb_name, entity=WANDB_ENT, config = vars(args),)
+        wandb.init(name=f'{args.wandb_name}_{K}', project=args.wandb_path, entity=WANDB_ENT, config = vars(args),)
      
         # load dataset
         train_dataset = dataset.iloc[train_index]
@@ -128,7 +130,7 @@ def train(args):
         # 사용한 option 외에도 다양한 option들이 있습니다.
         # https://huggingface.co/transformers/main_classes/trainer.html#trainingarguments 참고해주세요.
         training_args = TrainingArguments(
-            output_dir=f'{SAVE_DIR}/{K}',          # output directory
+            output_dir=f'{SAVE_DIR}',          # output directory
             save_total_limit=5,              # number of total save model.
             save_steps=len(train_dataset) // args.batch // 2, # model saving step.
             num_train_epochs=args.epochs,              # total number of training epochs
@@ -143,7 +145,7 @@ def train(args):
                                         # `no`: No evaluation during training.
                                         # `steps`: Evaluate every `eval_steps`.
                                         # `epoch`: Evaluate every end of epoch.
-        eval_steps = len(train_dataset) //  args.batch // 2, # evaluation step.
+            eval_steps = len(train_dataset) //  args.batch // 2, # evaluation step.
             load_best_model_at_end = True,
             metric_for_best_model = args.metric_for_best_model,
             report_to='wandb',
@@ -165,17 +167,9 @@ def train(args):
 
         # train model
         trainer.train()
-        path = os.path.join(BEST_MODEL_DIR, f'{args.wandb_name}{K}')
+        path = os.path.join(BEST_MODEL_DIR, f'{args.wandb_name}')
         model.save_pretrained(path)
 
-        # delete results checkpoint folder
-        del_path = os.path.join(SAVE_DIR, str(K))
-
-        if os.path.exists(del_path):
-          print()
-          print(f"******** Deleting results/{K} folder ********")
-          shutil.rmtree(del_path)
-        
         # wandb finish
         wandb.finish()
 
@@ -195,15 +189,15 @@ def main():
                         help='model type (default: klue/roberta-large)')
     parser.add_argument('--loss', type=str, default= 'focal',
                         help='LB: LabelSmoothing, CE: CrossEntropy, focal: Focal, f1:F1loss')
-    parser.add_argument('--scheduler', type=str, default= 'linear',
+    parser.add_argument('--scheduler', type=str, default= 'steplr',
                         help='linear, cosine, steplr')
     parser.add_argument('--wandb_name', type=str, default= 'test',
                         help='wandb name (default: test)')
 
     """hyperparameter"""
-    parser.add_argument('--epochs', type=int, default=20,
+    parser.add_argument('--epochs', type=int, default=10,
                         help='number of epochs to train (default: 20)')
-    parser.add_argument('--lr', type=float, default=5e-5,
+    parser.add_argument('--lr', type=float, default=1e-5,
                         help='learning rate (default: 5e-5)')
     parser.add_argument('--batch', type=int, default=32,
                         help='input batch size for training (default: 32)')
@@ -212,7 +206,7 @@ def main():
     parser.add_argument('--warmup', type=float, default=0.1,
                         help='warmup_ratio (default: 0.1)')
     parser.add_argument('--logging_steps', type=int,
-                        default=100, help='logging_steps (default: 100)')
+                        default=1000, help='logging_steps (default: 100)')
     parser.add_argument('--weight_decay', type=float,
                         default=0.01, help='weight_decay (default: 0.01)')
     parser.add_argument('--metric_for_best_model', type=str, default='f1',
@@ -221,12 +215,13 @@ def main():
                         help='add token count (default: 15)')
     parser.add_argument('--split_ratio', type=float, default=0.2,
                         help='Test Val split ratio (default : 0.2)')
-    parser.add_argument('--generate_option', type=int, default=0,
+    parser.add_argument('--generate_option', type=int, default=2,
                         help='0 : original / 1 : generated / 2 : concat')
     parser.add_argument('--augmentation', type=bool, default=True,
                         help='Apply Random Masking/Delteing (default=True)')
     parser.add_argument('--warmup_steps', type=int,default= 810,
                         help='warmup_steps (default: 810)')
+    parser.add_argument('--myk', type=int, default=0)
     
     args= parser.parse_args()
     

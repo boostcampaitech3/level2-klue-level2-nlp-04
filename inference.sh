@@ -4,5 +4,4 @@
 # results 내 파일들은 지워도 됩니다.
 
 python main_infer.py \
---model klue/roberta-large \
 --model_name refactor-test && rm -rf results 
