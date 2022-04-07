@@ -1,3 +1,4 @@
+from xml.dom import INDEX_SIZE_ERR
 import torch
 import numpy as np
 from typing import List
@@ -7,44 +8,29 @@ tokenized_to_protect = [0,1,2,3,7,14,36,65,21639,32000,32001,32002,32003,32004,3
 #[cls, pad, sep, unk, #, *, @, ^, per, loc, poh, dat, noh, org,\
 #[SUBT], [/SUBT], [SUB], [/SUB], [OBJT], [/OBJT], [OBJ], [/OBJ]]
 
-
-def random_delete(tokenized_train, indices:List[List[int]]):
-    deleted_train = tokenized_train
-
-    for idx, index_list in enumerate(indices):
-        if len(index_list) < 3:
-            continue
-
-        deleted_id = tokenized_train['input_ids'][idx].tolist()
-
-        for i in index_list:
-            if deleted_id[i] not in tokenized_to_protect:
-                deleted_id.pop(i)
-                deleted_id.append(2)
-
-        deleted_train['input_ids'][idx] = torch.tensor(deleted_id)
-
-    return deleted_train
-
-def random_masking(tokenized_train, indices:List[List[int]]):
-    masked_train = tokenized_train
+def random_masking_or_delete(tokenize_train, indices:List[List[int]]):
+    modify_train = tokenize_train
 
     for idx, index_list in enumerate(indices):
         if len(index_list) < 3:
             continue
 
-        masked_id = tokenized_train['input_ids'][idx].tolist()
+        modified_id = tokenize_train['input_ids'][idx].tolist()
+        rand = np.random.random()
 
         for i in index_list:
-            if masked_id[i] not in tokenized_to_protect:
-                masked_id[i] = 4
+            if modified_id[i] not in tokenized_to_protect:
+                if rand < 0.4:
+                    modified_id[i] = 4
+                elif rand >= 0.4 and rand <= 0.8:
+                    modified_id.pop(i)
+                    modified_id.append(2)
 
-        masked_train['input_ids'][idx] = torch.tensor(masked_id)
+        modify_train['input_ids'][idx] = torch.tensor(modified_id)
 
-    return masked_train
+    return modify_train 
 
-
-def main_augmentation(tokenized_train, p=0.1):
+def main_augmentation(tokenized_train, p=0.15):
     rand = np.random.random()
 
     # valid_indices 는 p 확률만큼 input_ids에서 랜덤으로 선택된 토큰의 인덱스를 담는 리스트    
@@ -65,12 +51,8 @@ def main_augmentation(tokenized_train, p=0.1):
     for idx, indices in enumerate(valid_indices):
         valid_indices[idx] = list(np.random.randint(low=min(indices), high=max(indices), size=int(len(indices)*p)))
     
-    # 80%의 확률로 선택된 인덱스들의 토큰들은 [MASK] 로 치환됨
-    # 10%의 확률로 선택된 인덱스들의 토큰들은 삭제됨 
+    # 50%의 확률로 선택된 인덱스들의 토큰들은 [MASK] 로 치환됨
+    # 20%의 확률로 선택된 인덱스들의 토큰들은 삭제됨 
     # 10%의 확률로 원본을 리턴함
-    if rand > 0.1 and rand <0.9:
-        return random_masking(tokenized_train, valid_indices)
-    elif rand >= 0.9:
-        return random_delete(tokenized_train, valid_indices)
-    
-    return tokenized_train
+
+    return random_masking_or_delete(tokenized_train, valid_indices)

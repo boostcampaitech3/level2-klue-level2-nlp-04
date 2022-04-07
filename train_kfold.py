@@ -65,6 +65,8 @@ class CustomTrainer(Trainer):
 
       elif self.scheduler == 'steplr':
         self.lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=1620, gamma=0.1)
+        #concat = 1746*2
+        #original = 1620
 
       return self.lr_scheduler
 
@@ -120,7 +122,7 @@ def train(args):
         print("="*100)
         print(f"DEVICE : {device}")
         # setting model hyperparameter
-        model_config =  AutoConfig.from_pretrained(MODEL_NAME)
+        model_config = AutoConfig.from_pretrained(MODEL_NAME, hidden_dropout_prob=0.2, attention_probs_dropout_prob=0.2)
         model_config.num_labels = 30
 
         model = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME, config=model_config)
@@ -215,9 +217,9 @@ def main():
                         help='add token count (default: 15)')
     parser.add_argument('--split_ratio', type=float, default=0.2,
                         help='Test Val split ratio (default : 0.2)')
-    parser.add_argument('--generate_option', type=int, default=2,
+    parser.add_argument('--generate_option', type=int, default=0,
                         help='0 : original / 1 : generated / 2 : concat')
-    parser.add_argument('--augmentation', type=bool, default=True,
+    parser.add_argument('--augmentation', type=bool, default=False,
                         help='Apply Random Masking/Delteing (default=True)')
     parser.add_argument('--warmup_steps', type=int,default= 810,
                         help='warmup_steps (default: 810)')
