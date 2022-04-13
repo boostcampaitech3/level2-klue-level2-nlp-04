@@ -8,7 +8,7 @@ BEST_MODEL_DIR = "/opt/ml/code/best_model"
 """DATASET"""
 TRAIN_DIR = "/opt/ml/dataset/train/train.csv"
 TEST_DIR = "/opt/ml/dataset/test/test_data.csv"
-GENERATE_DATA = "/opt/ml/dataset/generate/generated.csv"
+GENERATE_DATA = "/opt/ml/dataset/train/final.csv"
 
 """OPTIONS"""
 ONLY_ORIGINAL = 0
