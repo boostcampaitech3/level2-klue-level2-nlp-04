@@ -8,7 +8,7 @@
 ## Wrap-Up Report
 
 
-<a href="https://inbeomi.notion.site/NLP-4-Wrap-Up-Report-0017d45a0de740468f91eb619f786302https://maylilyo.notion.site/NLP-3-Wrap-up-report-952b51a771244dab9a52f973a6368e74"><img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" height=80 width=80px/></a>
+<a href="https://inbeomi.notion.site/NLP-4-Wrap-Up-Report-abe01b06a321462698c1c63a040f9d97"><img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" height=80 width=80px/></a>
 **Click logo**
 
 <br>
